@@ -23,6 +23,7 @@ import os
 import datetime
 import jcapiv1
 import jcapiv2
+import getpass
 # import autopkglib3
 from jcapiv2.rest import ApiException
 from jcapiv1.rest import ApiException as ApiExceptionV1
@@ -84,12 +85,12 @@ class JumpCloudImporter(Processor):
 
     AUTO:
     Auto deployment runs will create the JumpCloud command and a System Group using
-    System Insights. JumpCloud systems are queried using system insights, systems 
-    that do not have the AutoPkg software title or have the software title with a 
-    previous version are added to this system group. 
+    System Insights. JumpCloud systems are queried using system insights, systems
+    that do not have the AutoPkg software title or have the software title with a
+    previous version are added to this system group.
 
     System added to Group when:
-    Does not have software title 
+    Does not have software title
     Software title is less than AutoPkg version
 
     Use Case:
@@ -210,8 +211,14 @@ class JumpCloudImporter(Processor):
         kwargs = {
             'api': self.env['JC_API']
         }
-        # self.jumpcloud = jumpcloud.JUMPCLOUD(**kwargs)
+
+        # Key Assignment #
+        # From plist
         API_KEY = self.env['JC_API']
+        # Interactive
+        # key = getpass.getpass("JumpCloud API Key: ", stream=None)
+        # API_KEY = key
+
         # TODO: change var name to configv2
         CONFIGURATION.api_key['x-api-key'] = API_KEY
         # TODO: delete this below?
@@ -221,16 +228,14 @@ class JumpCloudImporter(Processor):
         # API_KEY = self.env['JC_API']
         CONFIGURATIONv1.api_key['x-api-key'] = API_KEY
 
-    def get_user_groups(self):
-        """Make an API call to get all user groups."""
-        try:
-            user_groups = self.jumpcloud.groups_user_list(CONTENT_TYPE, ACCEPT)
-            print(user_groups)
-        except ApiException as err:
-            print("Exception when calling UserGroupsApi->groups_user_list: %s\n" % err)
-
     def get_si_systems(self):
-        """Collect all the systems in an instance"""
+        """This function compares the systems inventory with the v1 api, saves those
+        systems to a list called inventory. 
+        
+        Systems with system insights are then queried, if a system insights inventory
+        system is an Apple device and in the computer inventory it's returned
+        """
+        # system inventory
         inventory = []
         SI_SYSTEMS = jcapiv2.SystemInsightsApi(jcapiv2.ApiClient(CONFIGURATION))
         V1_SYSTEMS = jcapiv1.SystemsApi(jcapiv1.ApiClient(CONFIGURATIONv1))
@@ -248,36 +253,28 @@ class JumpCloudImporter(Processor):
             # print(systems)
 
             for i in systems:
-                # filter by Apple Devices
-                # print("=========================")
-                # print("Checking System:" + i.system_id)
-                # print("ID: " + i.system_id)
-                # print("HOSTNAME: " + i.hostname)
-                # print("=========================")
+                # if system id is in the system inventory
+                # sys insights can store items outside the inventory
                 if i.system_id in inventory:
-                    allSystems.append(i.system_id)
-                # if i.hardware_vendor == 'Apple Inc. ':
-                #     allSystems.append(i.system_id)
-            # print(skip)
-            # print(systems)
-            # print("SI SYTEMS: " + str(allSystems))
-            # return allSystems
-            # a_set = set(inventory)
-            # b_set = set(allSystems)
-            # newlist = []
-            # if (a_set & b_set):
-            #     for i in a_set & b_set:
-            #         newlist.append(i)
-            # else:
-            #     print("No Common Elements")
-            # print("INTERSECTION:" + str(newlist))
-            # print("sdflkjsdflkajsflksjdlksjdfljf" + str(allSystems))
+                    # filter by Apple Devices
+                    if i._hardware_vendor == 'Apple Inc.':
+                        # create list of systems which have system insights data
+                        allSystems.append(i.system_id)
+            # return list of systems wish si data
             return allSystems
         except ApiException as err:
             print("Exception when calling SystemInsightsApi->systeminsights_list_system_info %s\n" % err)
 
     def get_si_apps_id(self, sysID, app):
-        """Make an API call to get system apps. Compare with package recipe"""
+        """This function gathers information about each system insights 
+        system, using AutoPkg as an input source this function queries
+        systems based on the app recipe name.
+        
+        Systems with the app are recorded to compare versions. 
+
+        Systems without the application are added to the sytem group
+        specifid in the recipe. 
+        """
         SI_APPS = jcapiv2.SystemInsightsApi(
             jcapiv2.ApiClient(CONFIGURATION))
         try:
@@ -310,11 +307,6 @@ class JumpCloudImporter(Processor):
                 searchInt += 100
                 if len(apps) == 0:
                     condition = False
-            # TODO: logic for the following
-            # SELF skip query
-            # Auto
-            # UPDATE
-            # Return info about app existence.
             if app in appArry:
                 print(app + " found on system : " + sysID)
             else:
@@ -325,11 +317,15 @@ class JumpCloudImporter(Processor):
             print("Exception when calling SystemInsightsApi->systeminsights_list_apps: %s\n" % err)
 
     def query_app_versions(self):
-        """query app version against processor"""
-        """FIXME: Error: string indices must be integers, not str
-        has to do with the fact that nothing is populated in missingUpdate
-        unless get_si_apps_id finds the application on that system
-        FIXME: self.env["SYS_GROUP"] not defined
+        """This function compares system app versions against the autopkg
+        app version
+
+        This function adds or removes systems from a system group. If 
+        systems have the latest version of an App, they are removed from
+        the AutoPkg sytem group.
+
+        If systems do not have the latest version of the app they are added
+        to the AutoPkg system group.
         """
         # sis = self.get_si_systems()
         for i in missingUpdate:
@@ -344,11 +340,10 @@ class JumpCloudImporter(Processor):
                       i["application"] + " does not require updating")
                 print(i["app_version"] + " already on latest version... " +
                       self.env.get("version"))
-                self.remove_system_to_group(i["system"], self.sysGrpID)
+                self.remove_system_from_group(i["system"], self.sysGrpID)
 
     def add_system_to_group(self, system, group):
         """Adds system to a group"""
-        # FIXME: Make this function more efficient
         # TODO: consider moving the "is system in this group?" to own func
         JC_SYS_GROUP = jcapiv2.SystemGroupMembersMembershipApi(jcapiv2.ApiClient(CONFIGURATION))
         composite = []
@@ -369,9 +364,8 @@ class JumpCloudImporter(Processor):
             print(
                 "Exception when calling SystemGroupMembersApi->graph_system_group_members_post:" % err)
 
-    def remove_system_to_group(self, system, group):
+    def remove_system_from_group(self, system, group):
         """Remove system from a group"""
-        # FIXME: Make this function more efficient
         # TODO: consider moving the "is system in this group?" to own func
         JC_SYS_GROUP = jcapiv2.SystemGroupMembersMembershipApi(jcapiv2.ApiClient(CONFIGURATION))
         composite = []
@@ -404,24 +398,17 @@ class JumpCloudImporter(Processor):
         self.env["globalCmdName"] = "%s" % "AutoPkg-" + self.env['NAME'] + "-" + self.env.get("version")
         self.cmdName = "%s" % "AutoPkg-" + self.env['NAME'] + "-" + self.env.get("version")
 
-    #FIXME: delete this, it's unnecessary atm
-    def list_command(self):
-        """Debugging command to filter out a comand by name"""
-        JC_CMD = jcapiv1.CommandsApi(jcapiv1.ApiClient(CONFIGURATIONv1))
-        filter = "name:eq:AutoPkg-AutoPkg-2.0-2019-11-26"
-        try:
-            # Get a Command File
-            api_response = JC_CMD.commands_list(CONTENT_TYPE, ACCEPT, filter=filter)
-            # result = api_response.get()
-            # print("Python Testing")
-            # print(api_response)
-        except ApiExceptionV1 as err:
-            print("Exception when calling CommandsApi->commands_post: %s\n" % err)
-
     def check_command(self, name):
-        """Check if command has been built by input name
-        This fucntion takes input from the name parameter and checks a command
-        exists with the same name on JumpCloud.
+        """Check if command exists by comparing autopkg names
+
+        This fucntion takes input from the JC_SYSGROUP parameter 
+        and checks a commandexists with the same name on JumpCloud.
+
+        if the command does not exist, return true indicating that the
+        group should be build.
+
+        if the command exists return false, the command does not need 
+        to be created
         """
         JC_CMD = jcapiv1.CommandsApi(jcapiv1.ApiClient(CONFIGURATIONv1))
         filter = "name:eq:%s" % name
@@ -433,14 +420,16 @@ class JumpCloudImporter(Processor):
                 print("Command does not exist")
                 return True
             else:
-                print("Command exists")
+                print("Command: " + name + " already exists")
                 return False
 
         except ApiExceptionV1 as err:
             print("Exception when calling CommandsApi->commands_post: %s\n" % err)
 
     def get_command_id(self, name):
-        """Create a JumpCloud command to install this package"""
+        """This function returns the ID of a matching command
+        name in the JumpCloud console
+        """
         JC_CMD = jcapiv1.CommandsApi(jcapiv1.ApiClient(CONFIGURATIONv1))
         filter = "name:eq:%s" % name
         try:
@@ -460,8 +449,13 @@ class JumpCloudImporter(Processor):
             print("Exception when calling CommandsApi->commands_post: %s\n" % err)
     
     def set_command(self, nameVar):
-        """Create a JumpCloud command for later edits"""
+        """Create a JumpCloud command to be edited by the edit_command 
+        function. 
+        
+        This fuction sets the name of the command to nameVar
+        """
         JC_CMD = jcapiv1.CommandsApi(jcapiv1.ApiClient(CONFIGURATIONv1))
+        # line indentations are deliberate to account for bash
         query = (
             '''
 #!/bin/bash
@@ -485,11 +479,19 @@ class JumpCloudImporter(Processor):
             print("Exception when calling CommandsApi->commands_post: %s\n" % err)
 
     def edit_command(self, file_name, url, id):
-        """Create a JumpCloud command to install this package"""
+        """Populates the command created by set_command
+        
+        This function adds:
+        the systemGroup to the command (to run the 
+        command, once per system)
+
+        the url of the AWS object into the command
+        """
         # trim the filename
         # print(file_name + "  " + self.sysGrpID + "  " + id)
         object_name = os.path.basename(file_name)
         JC_CMD = jcapiv1.CommandsApi(jcapiv1.ApiClient(CONFIGURATIONv1))
+        # line indentations are deliberate to account for bash
         query = (
 '''
 #!/bin/bash
@@ -636,7 +638,7 @@ exit 0
             print("Exception when calling SystemGroupsApi->groups_system_list: %s\n" % err)
 
     def set_group(self, inputGroup):
-        """Set JumpCloud Group"""
+        """This function creates a new sysetm group"""
         # build the template group object based off user input or default values
         JC_GROUPS = jcapiv2.SystemGroupsApi(jcapiv2.ApiClient(CONFIGURATION))
         try:
@@ -732,10 +734,7 @@ exit 0
             print("=================================================")
             module_file_path = os.path.abspath(__file__)
             # TODO: verbose instructions here
-            # JC API connection
-            # First use API key in
-            # TODO: check if the package exists on dist already
-            print(sys.version)
+            # print(sys.version)
 
             # Connect to API v1 and 2 endpoints
             self.connect_jc_online()
@@ -753,29 +752,31 @@ exit 0
                 # verify the group was created and get the new ID
                 self.get_group(self.sysGrpName)
 
-            # QUERY SYSTEMS
-            print("============== BEGIN SYSTEM QUERY ===============")
-            for i in self.get_si_systems():
-                self.get_si_apps_id(i, self.env['NAME'])
-            print("=============== END SYSTEM QUERY ================")
-            print("=================================================")
-            # print(self.env.get("version"))
+            if self.env["JC_TYPE"] == "auto":
+                # QUERY SYSTEMS
+                print("============== BEGIN SYSTEM QUERY ===============")
+                for i in self.get_si_systems():
+                    self.get_si_apps_id(i, self.env['NAME'])
+                print("=============== END SYSTEM QUERY ================")
+                print("=================================================")
+                # print(self.env.get("version"))
 
-            # QUERY APPS ON SYSTEMS
-            # print(missingUpdate)
-            print("============== BEGIN VERSION QUERY ==============")
-            self.query_app_versions()
-            print("=============== END VERSION QUERY ===============")
-            print("=================================================")
+                # QUERY APPS ON SYSTEMS
+                print("============== BEGIN VERSION QUERY ==============")
+                self.query_app_versions()
+                print("=============== END VERSION QUERY ===============")
+                print("=================================================")
 
             # Set naming conventions for command and package name
             self.set_global_vars()
             # Check if the package path exists
-            #TODO: use in upload logic
-            if self.check_pkg():
-                print("true condition")
-            else:
-                print("fail condition")
+
+            #TODO: use in upload logic testing 
+            # commented out for testing
+            # if self.check_pkg():
+            #     print("true condition")
+            # else:
+            #     print("fail condition")
 
             print("============== BEGIN COMMAND CHECK ==============")
             if self.env["JC_DIST"] == "AWS":
@@ -795,7 +796,6 @@ exit 0
                     ## END AWS functions ##
                 else:
                     # command exists just return id
-                    # TODO: build out update logic
                     self.get_command_id(self.cmdName)
             print("=============== END COMMAND CHECK ===============")
             print("=================================================")

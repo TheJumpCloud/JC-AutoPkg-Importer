@@ -1,22 +1,24 @@
-# JumpCloudImporter - An AutoPkg Processor
+# JumpCloud AutoPkg Importer
 
-JumpCloud can leverage [AutoPkg](https://github.com/autopkg/autopkg) to automate package testing and deployment. Administrators familiar with AutoPkg can use .jumpcloud template recipes to develop their own .pkg overrides. Those unfamiliar with AutoPkg should visit the [AutoPkg wiki](https://github.com/autopkg/autopkg/wiki) page for more documentation. In sum, the JumpCloudImporter was developed to help admins import packages packages to distribution points and automatically create JumpCloud commands to deploy those packages to JumpCloud systems.
+JumpCloud can leverage [AutoPkg](https://github.com/autopkg/autopkg) to automate package testing and deployment. Administrators familiar with AutoPkg can use .jumpcloud template recipes to develop their own .pkg overrides. Those unfamiliar with AutoPkg should visit the [AutoPkg wiki](https://github.com/autopkg/autopkg/wiki) page for more documentation. In sum, the JumpCloudImporter was developed to help admins import packages packages to distribution points and automatically create deployable JumpCloud commands for JumpCloud systems.
 
-## Installation and setup
+## Installation and Setup
 
 ### Prerequisites
 
-- python 3.x.x
-- awscli - Including an S3 Bucket
-- Python Modules
+- Python 3.x.x
+- JumpCloud Tenant
+- AutoPkg
+- awscli to store AWS credentials
+- Python Modules installed to AutoPkg's embedded copy of Python
   - JumpCloud APIs V1 and V2
   - Boto3
   
 ### Optional Settings
 
-- JumpCoud System Insights
+- JumpCloud System Insights
 
-The AutoPkg JumpCloud Importer processor requires AutoPkg, python 3.x and both versions of the python JumpCloud API to be installed on your local system. After installing the latest version of AutoPKG, add your JumpCloud API key to the AutoPkg:
+After installing the latest version of AutoPKG, add your JumpCloud API key to the AutoPkg:
 
 `defaults write ~/Library/Preferences/com.github.autopkg.plist JC_API yourApiKey`
 
@@ -69,7 +71,7 @@ This input variable is used when building commands, the id of a command runner m
 
 #### JC_TYPE
 
-There are three valid values which can be passed into each the JC_TYPE field: 
+There are three valid values which can be passed into each the JC_TYPE field:$$
 self, auto or update.
 
 self: This type of AutoPkg run builds a group and command based on the JC_SYSGROUP variable. Given that System Insights is requires to query systems for applications, a JC_TYPE of self would not invoke System Insights for this task. Manual assignment of systems would be required.
