@@ -24,6 +24,7 @@ import datetime
 import jcapiv1
 import jcapiv2
 import getpass
+import pprint
 # import autopkglib3
 from jcapiv2.rest import ApiException
 from jcapiv1.rest import ApiException as ApiExceptionV1
@@ -62,9 +63,13 @@ cmdName = ""
 cmdId = ""
 # Download link for the cmd
 cmdUrl = ""
-
+# type of autopkg run
 autopkgType = ""
-
+# Cha-cha-cha-cha Changes
+# Dict of changes processed throughout the importer run
+# TODO: define the change terms and add objects to the dict
+# throughout the import.
+changes = {}
 
 class JumpCloudImporter(Processor):
     """This processor provides JumpCloud admins with a set of basic functions
@@ -189,6 +194,9 @@ class JumpCloudImporter(Processor):
     output_variables = {
         "module_file_path": {
             "description": "Outputs this module's file path."
+        },
+        "jcautopkg_importer_results": {
+            "description": "results of autopkg and JC interation"
         }
     }
 
@@ -368,6 +376,7 @@ class JumpCloudImporter(Processor):
                 composite.append(i.id)
             if system not in composite:
                 print("adding " + system + " to " + group)
+                changes[ system ] = group
                 JC_SYS_GROUP.graph_system_group_members_post(group_id, CONTENT_TYPE, ACCEPT, body=body)
             else: 
                 print("system " + system + " already in group " + group)
@@ -749,13 +758,22 @@ exit 0
             return False
         return True
 
+    def result(self):
+        """This function returns the changes made by the JumpCloud
+        AutoPkg Importer. Possible changes include system group 
+        membership, system group additions, command creation and 
+        updates and uploading files to a distribution point.
+        """
+        print("Summary of system to group changes")
+        pprint.pprint(changes, width=1)
+
     def main(self):
         try:
+            print("========== JumpCloud AutoPkg Importer ==========")
+            print("version: {}".format(__version__))
+            print("package: {}".format(self.env['NAME']))
+            print("type: {}".format(self.env['JC_TYPE']))
             print("=================================================")
-            module_file_path = os.path.abspath(__file__)
-            # TODO: verbose instructions here
-            # print(sys.version)
-
             # Connect to API v1 and 2 endpoints
             self.connect_jc_online()
 
@@ -836,11 +854,11 @@ exit 0
             self.output("The input variable data '%s' was given to this "
                         "Processor." % self.env["JC_DIST"])
             # print(self.appName)
-
+            self.result()
             ### testing
-            self.output(
-                "This shared processor is located at %s" % module_file_path)
-            self.env["module_file_path"] = module_file_path
+            # self.output(
+            #     "This shared processor is located at %s" % module_file_path)
+            # self.env["module_file_path"] = module_file_path
         except Exception as err:
             # handle unexpected errors here
             raise ProcessorError(err)

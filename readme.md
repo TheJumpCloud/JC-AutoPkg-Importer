@@ -126,11 +126,7 @@ sudo /usr/local/autopkg/python -m pip install boto3
 
 Currently, a 1MB file size limit exists for all files on JumpCloud commands, as such AWS S3 buckets are used to store larger files. The JumpCloud AutoPkg Importer uploads packages to an S3 bucket and returned the bucket item's url. The AWS SDK is required to process packages and add AWS objects, the AWS CLI is required to authenticate to S3. By using this software you accept any and all costs associated with Amazon Web Services.
 
-Install the AWS Cli:
-
-```bash
-pip install awscli
-```
+[Install the AWS Cli](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html):
 
 Setup AWS Credentials:
 
