@@ -163,15 +163,21 @@ class JumpCloudImporter(Processor):
             "default": "self"
         },
         "JC_DIST": {
-            "required": False,
+            "required": True,
             "description": "dist point for uploading compiled packages"
             "TODO: set this as a var in ~/Lib/prefs/com.github.autopkg.plist"
-            "If dist = AWS"
+            "If dist = AWS this will upload to an AWS Bucket and use the functions"
+            "to do just that"
 
-            "if dist = SMB"
+            "if dist = SMB, todo"
 
-            "if dist = NULL",
-            "default": None
+            "if dist = NULL, todo",
+            "default": "AWS"
+        },
+        "AWS_BUCKET": {
+            "required": True,
+            "description": "Bucket name within AWS to upload packages",
+            "default": "jcautopkg"
         },
         "JC_DIY": {
             "required": False,
@@ -314,7 +320,10 @@ class JumpCloudImporter(Processor):
             else:
                 print(app + " not found on system: " + sysID)
                 # print(self.env.get("JC_SYSGROUP"))
-                self.add_system_to_group(sysID, self.sysGrpID)
+                if self.env["JC_TYPE"] == "auto":
+                    self.add_system_to_group(sysID, self.sysGrpID)
+                elif self.env["JC_TYPE"] == "update":
+                    self.remove_system_from_group(sysID, self.sysGrpID)
         except ApiException as err:
             print("Exception when calling SystemInsightsApi->systeminsights_list_apps: %s\n" % err)
 
@@ -763,7 +772,7 @@ exit 0
                 # verify the group was created and get the new ID
                 self.get_group(self.sysGrpName)
 
-            if self.env["JC_TYPE"] == "auto":
+            if self.env["JC_TYPE"] == "auto" or "update":
                 # QUERY SYSTEMS
                 print("============== BEGIN SYSTEM QUERY ===============")
                 for i in self.get_si_systems():
@@ -802,7 +811,7 @@ exit 0
                     # self.upload_fake_file(self.env["pkg_path"], "jcautopkg")
                     ## end testing function ##
                     ## AWS functions to run with packages ##
-                    self.upload_file(self.env["pkg_path"], "jcautopkg")
+                    self.upload_file(self.env["pkg_path"], self.env["AWS_BUCKET"])
                     self.edit_command(self.env["pkg_path"], self.cmdUrl, self.cmdId)
                     ## END AWS functions ##
                 else:
