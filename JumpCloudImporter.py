@@ -63,6 +63,8 @@ cmdId = ""
 # Download link for the cmd
 cmdUrl = ""
 
+autopkgType = ""
+
 
 class JumpCloudImporter(Processor):
     """This processor provides JumpCloud admins with a set of basic functions
@@ -522,7 +524,7 @@ fi
 now=$(date -u "+%a, %d %h %Y %H:%M:%S GMT")
 
 # create the string to sign from the request-line and the date
-signstr="POST /api/v2/systemgroups/${{systemGroupID}}/members HTTP/1.1\ndate: ${{now}}"
+signstr="POST /api/v2/systemgroups/${{systemGroupID}}/members HTTP/1.1\\ndate: ${{now}}"
 
 # create the signature
 signature=$(printf "$signstr" | openssl dgst -sha256 -sign /opt/jc/client.key | openssl enc -e -a | tr -d '\\n')
@@ -532,7 +534,7 @@ curl -s \\
 	-H 'Content-Type: application/json' \\
 	-H 'Accept: application/json' \\
 	-H "Date: ${{now}}" \\
-	-H "Authorization: Signature keyId=\"system/${{systemID}}\",headers=\"request-line date\",algorithm=\"rsa-sha256\",signature=\"${{signature}}\"" \\
+	-H "Authorization: Signature keyId=\\"system/${{systemID}}\\",headers=\\"request-line date\\",algorithm=\\"rsa-sha256\\",signature=\\"${{signature}}\\"" \\
 	-d '{{"op": "remove","type": "system","id": "'${{systemID}}'"}}' \\
 	"https://console.jumpcloud.com/api/v2/systemgroups/${{systemGroupID}}/members"
 
@@ -659,7 +661,16 @@ exit 0
         pkg_path = self.env["pkg_path"]
         jc_dist = self.env["JC_DIST"]
         if pkg_path is not None and jc_dist is not None:
+            # Determine whether the recipe is a .pkg or .dmg
             # print(pkg_path + " package exists")
+            object_name = os.path.basename(pkg_path)
+            filename, file_extension = os.path.splitext(pkg_path)
+            print("Filename is: " + filename)
+            print("File Extension is: " + file_extension)
+            if file_extension == ".pkg":
+                autopkgType = "pkg"
+            elif file_extension == ".dmg":
+                autopkgType = "dmg"
             # print(jc_dist + " is real")
             # with open(pkg_path, "rb") as f:
             #     copy(f, jc_dist)
@@ -745,9 +756,9 @@ exit 0
 
             # Check if group defined above exists
             if self.get_group(self.sysGrpName):
-                print(" System group exists, no need to create new group")
+                print("System group exists, no need to create new group")
             else:
-                print(" System group does not exist, creating group:")
+                print("System group does not exist, creating group:")
                 self.set_group(self.sysGrpName)
                 # verify the group was created and get the new ID
                 self.get_group(self.sysGrpName)
@@ -773,10 +784,10 @@ exit 0
 
             #TODO: use in upload logic testing 
             # commented out for testing
-            # if self.check_pkg():
-            #     print("true condition")
-            # else:
-            #     print("fail condition")
+            if self.check_pkg():
+                print("true condition")
+            else:
+                print("fail condition")
 
             print("============== BEGIN COMMAND CHECK ==============")
             if self.env["JC_DIST"] == "AWS":
