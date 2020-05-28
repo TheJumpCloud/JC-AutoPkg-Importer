@@ -13,7 +13,7 @@ JumpCloud can leverage [AutoPkg](https://github.com/autopkg/autopkg) to automate
 - Python Modules installed to AutoPkg's embedded copy of Python
   - JumpCloud APIs V1 and V2
   - Boto3
-  
+
 ### Optional Settings
 
 - JumpCloud System Insights
@@ -67,7 +67,7 @@ This input variable is the name of the smart group built using system insights. 
 
 #### JC_USER
 
-This input variable is used when building commands, the id of a command runner may be passed into this variable field. By default the root user account is assigned to the commands built with this processor. 
+This input variable is used when building commands, the id of a command runner may be passed into this variable field. By default the root user account is assigned to the commands built with this processor.
 
 #### JC_TYPE
 
@@ -97,7 +97,7 @@ This is the bucket name required for AWS. the default value is "jcautopkg" so if
 
 ### Adding the JumpCloud Importer to AutoPkg
 
-Copy the JumpCloudImporter.py file to `/Library/AutoPkg/autopkglib/` to make the importer available in the AutoPkg system context.
+Copy the JumpCloudImporter.py file to `/Library/AutoPkg/autopkglib/` to make the importer available in the AutoPkg context.
 
 ## JumpCloud Recipe Repo
 
