@@ -1,6 +1,6 @@
 # JumpCloud AutoPkg Importer
 
-JumpCloud can leverage [AutoPkg](https://github.com/autopkg/autopkg) to automate package testing and deployment. Administrators familiar with AutoPkg can use .jumpcloud template recipes to develop their own .pkg overrides. Those unfamiliar with AutoPkg should visit the [AutoPkg wiki](https://github.com/autopkg/autopkg/wiki) page for more documentation. In sum, the JumpCloudImporter was developed to help admins import packages packages to distribution points and automatically create deployable JumpCloud commands for JumpCloud systems.
+JumpCloud can leverage [AutoPkg](https://github.com/autopkg/autopkg) to automate package testing and deployment through the JumpCloud AutoPkg Importer. Those familiar with AutoPkg can use develop their own .pkg overrides which the JumpCloud AutoPkg Importer can use. To learn more about AutoPkg, visit the [AutoPkg wiki](https://github.com/autopkg/autopkg/wiki) page for documentation. The JumpCloud AutoPkg Importer was designed process AutoPkg packages to distribution points and dynamically create JumpCloud commands to install those package to system targets.
 
 ## Installation and Setup
 
@@ -9,7 +9,8 @@ JumpCloud can leverage [AutoPkg](https://github.com/autopkg/autopkg) to automate
 - Python 3.5.x+
 - JumpCloud Tenant
 - AutoPkg 2.x+
-- awscli to store AWS credentials
+- awscli
+- S3 Storage Bucket to store AutoPkg Packages
 - Python Modules installed to AutoPkg's embedded copy of Python
   - JumpCloud APIs V1 and V2
   - Boto3
@@ -18,7 +19,7 @@ JumpCloud can leverage [AutoPkg](https://github.com/autopkg/autopkg) to automate
 
 - JumpCloud System Insights
 
-JumpCloud System Insights are required to query systems for application versions. By default AutoPkg JumpCloud recipes can run without system insights but the real power of patch management and the AutoPkg JumpCloud importer comes from querying system versions.
+JumpCloud System Insights are required to query systems for application versions. By default AutoPkg JumpCloud recipes can run without System Insights but the real power of patch management and the AutoPkg JumpCloud importer is the ability to edit groups from System Insights data.
 
 ## In a nutshell
 
@@ -51,6 +52,8 @@ When creating an override, add the JumpCloud Processor in the Process array of a
 
 ### Arguments/ Input Variables
 
+The following Arguments/ Input Variables are required for the JumpCloud AutoPkg Processor to complete a successful run.
+
 #### JC_API
 
 The JC_API input variable is the only input variable which is not passed in via the recipe. The API key is set as a key in the com.github.autopkg preference file located at ~/Library/Preferences/com.github.autopkg.plist. The JC_API key can be set as a recipe variable but it seems cumbersome to copy that into each recipe.
@@ -74,40 +77,35 @@ This input variable is used when building commands, the id of a command runner m
 There are three valid values which can be passed into each the JC_TYPE field:
 self, auto or update.
 
-self: This type of AutoPkg run builds a group and command based on the JC_SYSGROUP variable. Given that System Insights is requires to query systems for applications, a JC_TYPE of self would not invoke System Insights for this task. Manual assignment of systems would be required.
+**self**: This type of AutoPkg run builds a group and command based on the JC_SYSGROUP variable. Given that System Insights is required to query systems for applications, a JC_TYPE of self would not invoke System Insights for this task. Manual assignment of systems would be required.
 
-auto: This type of AutoPkg run queries systems in your organization and cross references the title and version of applications on systems with the title of software from an AutoPkg recipe. For example running the Firefox recipe would query JumpCloud systems for the following:
+**auto**: This type of AutoPkg run queries systems in your organization and cross references the title and version of applications on systems with the title of software from an AutoPkg recipe. For example running the Firefox recipe would query JumpCloud systems for the following:
 Does the system have Firefox?
 Is the installed version of Firefox up to date (based on the recipe definition)?
 
-If a system does not have Firefox or if that system has an out-of-date version of Firefox, it would be added to the group. Commands assigned to this group are assigned with the run once context. After the command runs, the system would take itself out of the group.
+If a system does not have Firefox or if a system has an out-of-date version of Firefox, it would be added to the group. Systems assigned to this group and corresponding command are scheduled to run the command once. After the command runs, the system is removed from the the group.
 
-update: This type of AutoPkg run builds a system group (if it does not exist) and only adds systems which currently have the AutoPkg app installed. Those systems who's version of the app are out of data are kept in the system group. This run type can remove systems without the specified app from the system group if the group exists and systems without the group are in that group. Admins who only wish to update systems with an app can use the update type to run app updates.
+**update**: This type of AutoPkg run builds a system group (if it does not exist) and only adds systems which currently have the AutoPkg app installed. Those systems who's version of the app are out of data are kept in the system group. This run type can remove systems without the specified app from the system group if the group exists and systems without the group are in that group. Admins who only wish to update systems with an app can use the update type to run app updates.
 
 #### JC_DIST
 
-At this point only "AWS" can be passed into this field.
-
-#TODO: in the future it would be nice to upload right to JumpCloud.
-#TODO: it would be nice to upload to a https distribution point if one existed
+During the beta development of this processor only "AWS" (Amazon Web Services) can be passed into this field. Other distribution endpoints have not yet been developed.
 
 #### AWS_BUCKET
 
-This is the bucket name required for AWS. the default value is "jcautopkg" so if that bucket name does not exist, the processor will fail.
+This is the bucket name required for AWS. the default value is "jcautopkg" if that bucket name does not exist, the processor will fail. The credentials specified in [AWS Distribution Points](#AWS-Distribution-Points) should have access to your AWS Bucket, if the bucket is unreachable the processor will fail.
 
-### Adding the JumpCloud Importer to AutoPkg
+### Installing the JumpCloud Importer
+
+To install the JumpCloud AutoPkg Importer, first ensure AutoPkg](https://github.com/autopkg/autopkg) is installed. Because AutoPkg contains it's own version of Python, the JumpCloud AutoPkg Importer must be made accessible to that version of Python.
 
 Copy the JumpCloudImporter.py file to `/Library/AutoPkg/autopkglib/` to make the importer available in the AutoPkg context.
 
-## JumpCloud Recipe Repo
+After copying the JumpCloudImporter.py file to AutoPkg's python library, follow the remaining steps to ensure AutoPkg can access your S3 bucket and the JumpCloud Python API.
 
-#TODO: This repository needs work, I've tested some recipes and have those saved to the [jumpcloud-recipes](https://github.com/jworkmanjc/jumpcloud-recipes) repo.
+### AutoPKG 2.0+ Dependencies
 
-Pending approval from AutoPkg, clone the github.com/autopkg/recipes/jumpcloud-recipes repo to begin importing autopkg software to you S3 bucket and deployment commands to JumpCloud.
-
-## AutoPKG 2.0+ Dependencies
-
-AutoPkg 2.0 contains it's own distribution of Python3, the following modules should be installed to the AutoPkg python3 framework as they are out of the scope of the standard python modules. All the modules below are referenced by the JumpCloud AutoPkg Importer during an AutoPkg run, they need to be made available to AutoPkg's distribution of Python3
+AutoPkg 2.0+ contains it's own distribution of Python3, the following modules should be installed to the AutoPkg python3 framework as they are out of the scope of the standard python modules. All the modules below are referenced by the JumpCloud AutoPkg Importer during an AutoPkg run, they need to be made available to AutoPkg's distribution of Python3
 
 Install the [JumpCloud Python APIs, v1 and v2](https://github.com/TheJumpCloud/jcapi-python)
 
@@ -122,7 +120,7 @@ Install the [AWS SKD boto3](https://boto3.amazonaws.com/v1/documentation/api/lat
 sudo /usr/local/autopkg/python -m pip install boto3
 ```
 
-## AWS Distribution Points
+### AWS Distribution Points
 
 Currently, a 1MB file size limit exists for all files on JumpCloud commands, as such AWS S3 buckets are used to store larger files. The JumpCloud AutoPkg Importer uploads packages to an S3 bucket and returned the bucket item's url. The AWS SDK is required to process packages and add AWS objects, the AWS CLI is required to authenticate to S3. By using this software you accept any and all costs associated with Amazon Web Services.
 
@@ -134,13 +132,11 @@ Setup AWS Credentials:
 aws configure
 ```
 
-## Bucket configuration
+### Bucket configuration
 
-#TODO: Figure out best way to do this.
+Within your AWS portal, build and name a bucket. Make the bucket accessible to your systems. Before making a bucket public, attempt to run the processor with a recipe and check the output, a .pkg file should be uploaded to s3.
 
-Build and name a bucket. Make the bucket accessible to your systems. Before making a bucket public, attempt to run the processor with a recipe and check the output, a .pkg file should be uploaded to s3.
-
-Here's an example bucket policy for systems public access to GetObject. Create a bucket policy that fits the needs of your org.
+Here's an example public bucket policy for systems public access to GetObject. Create a bucket policy that fits the needs of your organization and security requirements.
 
 ```json
 {
@@ -156,6 +152,10 @@ Here's an example bucket policy for systems public access to GetObject. Create a
     ]
 }
 ```
+
+## JumpCloud Example Recipes
+
+The example recipe directory contains recipe examples which have been tested to work with the JumpCloud AutoPkg Importer. If you plan to use one of the recipes in this directory, you will likely have to import the parent recipe repositories.
 
 ## Acknowledgments
 
