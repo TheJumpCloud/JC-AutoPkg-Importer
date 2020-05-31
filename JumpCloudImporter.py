@@ -15,24 +15,15 @@
 from __future__ import absolute_import
 from __future__ import print_function
 import sys
-# sys.path.append('/Users/jworkman/Documents/GitHub/autopkg/Code/autopkglib')
 import os
-# import sys
-# sys.path.append('/usr/local/lib/python3.7/site-packages/jcapiv1')
-# sys.path.append('/usr/local/lib/python3.7/site-packages/jcapiv2')
 import datetime
 import jcapiv1
 import jcapiv2
 import getpass
 import pprint
-# import autopkglib3
 from jcapiv2.rest import ApiException
 from jcapiv1.rest import ApiException as ApiExceptionV1
 from autopkglib import Processor, ProcessorError
-# from autopkglib3 import Processor, ProcessorError
-# used for testing
-# from shutil import copy
-
 import logging as log
 import boto3
 from botocore.exceptions import ClientError
@@ -145,12 +136,12 @@ class JumpCloudImporter(Processor):
         "JC_USER": {
             "required": False,
             "description": "JumpCloud user to who is designated to run command"
-            "root user id in jumpcloud is: 000000000000000000000000",
+            "root user id in JumpCloud is: 000000000000000000000000",
             "default": "000000000000000000000000"
         },
         "JC_TYPE": {
             "required": False,
-            "description": "type of deployment jumpcloud will process "
+            "description": "type of deployment JumpCloud will process "
             "this field only be one of three values listed below: "
             "self, auto or update"
             "self - no scoping processed, just uses the commands API"
@@ -176,7 +167,7 @@ class JumpCloudImporter(Processor):
         },
         "JC_DIY": {
             "required": False,
-            "description": "dict for aws bucket"
+            "description": "dict for AWS bucket"
         }
     }
     output_variables = {
@@ -184,7 +175,7 @@ class JumpCloudImporter(Processor):
             "description": "Outputs this module's file path."
         },
         "jcautopkg_importer_results": {
-            "description": "results of autopkg and JC interation"
+            "description": "results of autopkg and JC integration"
         }
     }
 
@@ -265,7 +256,7 @@ class JumpCloudImporter(Processor):
                     if i._hardware_vendor == 'Apple Inc.':
                         # create list of systems which have system insights data
                         allSystems.append(i.system_id)
-            # return list of systems wish si data
+            # return list of systems wish systeminsights data
             return allSystems
         except ApiException as err:
             print(
@@ -278,8 +269,8 @@ class JumpCloudImporter(Processor):
 
         Systems with the app are recorded to compare versions.
 
-        Systems without the application are added to the sytem group
-        specifid in the recipe.
+        Systems without the application are added to the system group
+        specified in the recipe.
         """
         SI_APPS = jcapiv2.SystemInsightsApi(
             jcapiv2.ApiClient(self.CONFIGURATIONv2))
@@ -310,7 +301,7 @@ class JumpCloudImporter(Processor):
                             }
                             # add the system to the missing update array
                             self.missingUpdate.append(name)
-                # search next 100 apps/ max limit of the jumpcloud API
+                # search next 100 apps/ max limit of the JumpCloud API
                 searchInt += 100
                 if len(apps) == 0:
                     condition = False
@@ -328,17 +319,16 @@ class JumpCloudImporter(Processor):
                 "Exception when calling SystemInsightsApi->systeminsights_list_apps: %s\n" % err)
 
     def query_app_versions(self):
-        """This function compares system app versions against the autopkg
+        """This function compares system app versions against the AutoPkg
         app version
 
-        This function adds or removes systems from a system group. If 
+        This function adds or removes systems from a system group. If
         systems have the latest version of an App, they are removed from
-        the AutoPkg sytem group.
+        the AutoPkg system group.
 
         If systems do not have the latest version of the app they are added
         to the AutoPkg system group.
         """
-        # sis = self.get_si_systems()
         for i in self.missingUpdate:
             if (i["app_version"] != self.env.get("version") or self.env.get("version") == "0.0.0.0"):
                 print("system:" + i["system"] + " " +
@@ -356,7 +346,6 @@ class JumpCloudImporter(Processor):
 
     def add_system_to_group(self, system, group):
         """Adds system to a group"""
-        # TODO: consider moving the "is system in this group?" to own func
         JC_SYS_GROUP = jcapiv2.SystemGroupMembersMembershipApi(
             jcapiv2.ApiClient(self.CONFIGURATIONv2))
         composite = []
@@ -381,7 +370,6 @@ class JumpCloudImporter(Processor):
 
     def remove_system_from_group(self, system, group):
         """Remove system from a group"""
-        # TODO: consider moving the "is system in this group?" to own func
         JC_SYS_GROUP = jcapiv2.SystemGroupMembersMembershipApi(
             jcapiv2.ApiClient(self.CONFIGURATIONv2))
         composite = []
@@ -563,7 +551,7 @@ exit 0
 ''')
         query = query.format(self.sysGrpID, object_name, url)
         usr = self.env["JC_USER"]
-        # files uploaded in list[str] format where str is an ID of a jumpcloud
+        # files uploaded in list[str] format where str is an ID of a JumpCloud
         # file variable for selecting the AutoPkg package path
         #TODO: switch to self.cmdName
         cmdName = self.env["globalCmdName"]
@@ -602,9 +590,9 @@ exit 0
 
     def associate_command_with_group_list(self, command_id, group_id):
         """
-        Get the associations of a particular system group, return true if 
-        the command_id is associated with the group_id. Use this function 
-        to determine if the system group needs to be associated with 
+        Get the associations of a particular system group, return true if
+        the command_id is associated with the group_id. Use this function
+        to determine if the system group needs to be associated with
         newly built commands.
         """
         ASSOC_CMD = jcapiv2.SystemGroupAssociationsApi(
@@ -616,7 +604,6 @@ exit 0
             # print(api_response)
             i = 0
             # should be zero for an array containing one command result
-            # print("response length is: " + str(len(api_response)))
             while i < len(api_response):
                 print("group association exists at index: " +
                       str(i) + " : " + api_response[i]._to.id)
@@ -670,7 +657,7 @@ exit 0
                 "Exception when calling SystemGroupsApi->groups_system_list: %s\n" % err)
 
     def set_group(self, inputGroup):
-        """This function creates a new sysetm group"""
+        """This function creates a new system group"""
         # build the template group object based off user input or default values
         JC_GROUPS = jcapiv2.SystemGroupsApi(jcapiv2.ApiClient(self.CONFIGURATIONv2))
         try:
@@ -703,9 +690,6 @@ exit 0
                 autopkgType = "pkg"
             elif file_extension == ".dmg":
                 autopkgType = "dmg"
-            # print(jc_dist + " is real")
-            # with open(pkg_path, "rb") as f:
-            #     copy(f, jc_dist)
             return True
         else:
             return False
@@ -733,17 +717,13 @@ exit 0
         # fake upload the file
         print("filename is: " + file_name)
         print("object name is: " + object_name)
-        print("check this out: " + os.path.basename(file_name))
+        print("object location is: " + os.path.basename(file_name))
         jc_dist = self.env["JC_DIST"]
         if file_name is not None and jc_dist is not None:
             print(file_name + " package exists")
             print(jc_dist + " is real")
-            #FIXME: tupel index out of range
             print(file_name + " " + self.cmdId)
-            # self.edit_command(file_name, "bogus", self.cmdId)
-            self.edit_command(file_name, "something", self.cmdId)
-            # with open(pkg_path, "rb") as f:
-            #     copy(f, jc_dist)
+            self.edit_command(file_name, "debug_package", self.cmdId)
 
     def upload_file(self, file_name, bucket, object_name=None):
         """Upload a file to an S3 bucket
@@ -826,12 +806,11 @@ exit 0
             self.set_global_vars()
             # Check if the package path exists
 
-            #TODO: use in upload logic testing
-            # commented out for testing
-            if self.check_pkg():
-                print("true condition")
-            else:
-                print("fail condition")
+            # Debugging Step Commented Out
+            # if self.check_pkg():
+            #     print("true condition")
+            # else:
+            #     print("fail condition")
 
             print("============== BEGIN COMMAND CHECK ==============")
             if self.env["JC_DIST"] == "AWS":
@@ -858,7 +837,6 @@ exit 0
             print("=================================================")
 
             print("========== BEGIN COMMAND ASSOCIATIONS ===========")
-            # ### testing
             # Associate command with system group
             if not self.associate_command_with_group_list(self.get_command_id(self.env["globalCmdName"]), self.sysGrpID):
                 self.associate_command_with_group_post(
@@ -873,12 +851,10 @@ exit 0
                         "Processor." % self.env['NAME'])
             self.output("The input variable data '%s' was given to this "
                         "Processor." % self.env["JC_DIST"])
-            # print(self.appName)
+
+            # Print system associations to the group at the end of the run
             self.result()
-            ### testing
-            # self.output(
-            #     "This shared processor is located at %s" % module_file_path)
-            # self.env["module_file_path"] = module_file_path
+
         except Exception as err:
             # handle unexpected errors here
             raise ProcessorError(err)
