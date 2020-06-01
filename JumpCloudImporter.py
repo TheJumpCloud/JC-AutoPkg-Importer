@@ -191,7 +191,7 @@ class JumpCloudImporter(Processor):
         self.globalCmdName = None
         self.version = None
         self.appName = self.env['NAME']
-        self.JC_DIST = self.env['JC_DIST']
+        # self.JC_DIST = self.env['JC_DIST']
         # self.SystemGroupsApi = None
         # self.UserGroupsApi = None
 
