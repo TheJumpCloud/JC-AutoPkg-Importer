@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Identifier</key>
+	<string>local.pkg.GoogleChromePkg</string>
+	<key>Input</key>
+	<dict>
+		<key>DOWNLOAD_URL</key>
+		<string>https://dl.google.com/chrome/mac/stable/gcem/GoogleChrome.pkg</string>
+		<key>NAME</key>
+		<string>GoogleChrome</string>
+	</dict>
+	<key>ParentRecipe</key>
+	<string>com.github.autopkg.pkg.googlechromepkg</string>
+	<key>Process</key>
+    <array>
+        <dict>
+            <key>Processor</key>
+            <string>JumpCloudImporter</string>
+            <key>Arguments</key>
+            <dict>
+                <key>JC_DIST</key>
+                <string>AWS</string>
+				<key>AWS_BUCKET</key>
+				<string>jcautopkg</string>
+                <key>JC_SYSGROUP</key>
+                <string>AutoPkg-%NAME%-%version%</string>
+				<key>JC_TYPE</key>
+				<string>update</string>
+            </dict>
+        </dict>
+    </array>
+	<key>ParentRecipeTrustInfo</key>
+	<dict>
+		<key>non_core_processors</key>
+		<dict/>
+		<key>parent_recipes</key>
+		<dict>
+			<key>com.github.autopkg.download.googlechromepkg</key>
+			<dict>
+				<key>git_hash</key>
+				<string>22d8476c4acbf2f9f25d8e1d3f22313308a7e39d</string>
+				<key>path</key>
+				<string>~/Library/AutoPkg/RecipeRepos/com.github.autopkg.recipes/GoogleChrome/GoogleChromePkg.download.recipe</string>
+				<key>sha256_hash</key>
+				<string>80e298d1c235f742ef371f12b6343301fa58c47bf826c85b1eabdc116b60502a</string>
+			</dict>
+			<key>com.github.autopkg.pkg.googlechromepkg</key>
+			<dict>
+				<key>git_hash</key>
+				<string>22d8476c4acbf2f9f25d8e1d3f22313308a7e39d</string>
+				<key>path</key>
+				<string>~/Library/AutoPkg/RecipeRepos/com.github.autopkg.recipes/GoogleChrome/GoogleChromePkg.pkg.recipe</string>
+				<key>sha256_hash</key>
+				<string>973bcec12e3316bbbc8e454e01e16dd9b53dd192fc563b3d88d2e2c7b816ca0f</string>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>

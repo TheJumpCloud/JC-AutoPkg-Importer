@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Identifier</key>
+	<string>local.pkg.VisualStudioCode</string>
+	<key>Input</key>
+	<dict>
+		<key>DISABLE_CODE_SIGNATURE_VERIFICATION</key>
+		<false/>
+		<key>DOWNLOAD_URL</key>
+		<string>https://go.microsoft.com/fwlink/?LinkID=620882</string>
+		<key>NAME</key>
+		<string>Visual Studio Code</string>
+		<key>PKG_ID</key>
+		<string>com.microsoft.VSCode</string>
+	</dict>
+	<key>ParentRecipe</key>
+	<string>com.github.killahquam.pkg.visualstudioscode</string>
+	<key>Process</key>
+    <array>
+        <dict>
+            <key>Processor</key>
+            <string>JumpCloudImporter</string>
+            <key>Arguments</key>
+            <dict>
+                <key>JC_DIST</key>
+                <string>AWS</string>
+				<key>AWS_BUCKET</key>
+				<string>jcautopkg</string>
+                <key>JC_SYSGROUP</key>
+                <string>AutoPkg-%NAME%-%version%</string>
+				<key>JC_TYPE</key>
+				<string>update</string>
+            </dict>
+        </dict>
+    </array>
+	<key>ParentRecipeTrustInfo</key>
+	<dict>
+		<key>non_core_processors</key>
+		<dict/>
+		<key>parent_recipes</key>
+		<dict>
+			<key>com.github.killahquam.download.visualstudiocode</key>
+			<dict>
+				<key>git_hash</key>
+				<string>b7ff3eada65cc9deea330bb53d697d3b8c406f5b</string>
+				<key>path</key>
+				<string>~/Library/AutoPkg/RecipeRepos/com.github.autopkg.killahquam-recipes/VisualStudioCode/VisualStudioCode.download.recipe</string>
+				<key>sha256_hash</key>
+				<string>1cb8d4296e4e70c39ed8dc3461c2b17761a38a5ce0ba8e932c7b4ee05fccb844</string>
+			</dict>
+			<key>com.github.killahquam.pkg.visualstudioscode</key>
+			<dict>
+				<key>git_hash</key>
+				<string>28cf013fde7599b58452170436ab9c50100c308c</string>
+				<key>path</key>
+				<string>~/Library/AutoPkg/RecipeRepos/com.github.autopkg.killahquam-recipes/VisualStudioCode/VisualStudioCode.pkg.recipe</string>
+				<key>sha256_hash</key>
+				<string>00d3a5726136abc5430bc8a22710c6aa21b22a6371691258641ca24e6e24b95e</string>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>

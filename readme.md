@@ -27,7 +27,7 @@ The JumpCloud Importer takes input from .pkg recipe and uses the JumpCloud API t
 
 AutoPkg recipes can be overridden and it's best practice to do just that. Overridden package are generally saved locally and trusted. When the parent recipe changes, AutoPkg should notify you of the change and an admin can inspect the recipe for validity before accepting it's changes. [How (Not) To Do Bad Things With AutoPkg](https://www.youtube.com/watch?v=LnvQmLcDF8w)
 
-When creating an override, add the JumpCloud Processor in the Process array of a given recipe. Example recipes are located in the [jumpcloud-recipes]((https://github.com/jworkmanjc/jumpcloud-recipes)) repo.
+When creating an override, add the JumpCloud Processor in the Process array of a given recipe. Example recipes are located in the [recipe_overrides](recipe_overrides) directory.
 
 ```XML
 <key>ParentRecipe</key>
@@ -36,7 +36,7 @@ When creating an override, add the JumpCloud Processor in the Process array of a
 <array>
     <dict>
         <key>Processor</key>
-        <string>workman.JumpCloudImporter/JumpCloudImporter</string>
+        <string>JumpCloudImporter</string>
         <key>Arguments</key>
         <dict>
             <key>JC_DIST</key>
@@ -155,7 +155,13 @@ Here's an example public bucket policy for systems public access to GetObject. C
 
 ## JumpCloud Example Recipes
 
-The example recipe directory contains recipe examples which have been tested to work with the JumpCloud AutoPkg Importer. If you plan to use one of the recipes in this directory, you will likely have to import the parent recipe repositories.
+The [recipe_overrides](recipe_overrides) directory contains recipe examples which have been tested to work with the JumpCloud AutoPkg Importer. If you plan to use one of the recipes in this directory, you will likely have to import the parent recipe repositories.
+
+To run one of the recipes in the example directory, simply run:
+
+```bash
+autopkg run Firefox.jumpcloud.recipe
+```
 
 ## Acknowledgments
 
