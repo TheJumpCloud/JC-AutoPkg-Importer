@@ -1,5 +1,7 @@
 # JumpCloud AutoPkg Importer
 
+![relax and automate your software deployments](https://github.com/TheJumpCloud/JC-AutoPkg-Importer/wiki/images/mac-management-transparent.png)
+
 JumpCloud can leverage [AutoPkg](https://github.com/autopkg/autopkg) to automate package testing and deployment through the JumpCloud AutoPkg Importer. Those familiar with AutoPkg can use develop their own .pkg overrides which the JumpCloud AutoPkg Importer can use. To learn more about AutoPkg, visit the [AutoPkg wiki](https://github.com/autopkg/autopkg/wiki) page for documentation. The JumpCloud AutoPkg Importer was designed process AutoPkg packages to distribution points and dynamically create JumpCloud commands to install those package to system targets.
 
 ## Installation and Setup

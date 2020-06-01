@@ -75,9 +75,6 @@ class JumpCloudImporter(Processor):
 
     Use Case:
     Updating systems who have a specific software title installed
-
-    Workflows:
-    TODO: Nothing is specified
     """
     # Define Class Variables
     description = __doc__
@@ -215,7 +212,6 @@ class JumpCloudImporter(Processor):
         # API_KEY = key
 
         self.CONFIGURATIONv2.api_key['x-api-key'] = API_KEY
-        # # TODO: delete this below?
         self.jumpcloud = jcapiv2.UserGroupsApi(
             jcapiv2.ApiClient(self.CONFIGURATIONv2))
 
@@ -230,32 +226,31 @@ class JumpCloudImporter(Processor):
         system is an Apple device and in the computer inventory it's returned
         """
         # system inventory
-        inventory = []
+        # inventory = []
         SI_SYSTEMS = jcapiv2.SystemInsightsApi(
             jcapiv2.ApiClient(self.CONFIGURATIONv2))
-        V1_SYSTEMS = jcapiv1.SystemsApi(jcapiv1.ApiClient(self.CONFIGURATIONv1))
-        V1_api_response = V1_SYSTEMS.systems_list(self.CONTENT_TYPE, self.ACCEPT)
+        # V1_SYSTEMS = jcapiv1.SystemsApi(jcapiv1.ApiClient(self.CONFIGURATIONv1))
+        # V1_api_response = V1_SYSTEMS.systems_list(self.CONTENT_TYPE, self.ACCEPT)
         # pprint(V1_api_response)
-        for i in V1_api_response.results:
-            inventory.append(i._id)
+        # for i in V1_api_response.results:
+            # inventory.append(i._id)
         # print("INVENTORY: " + str(inventory))
         try:
-            skip = 0
+            # skip = 0
 
             allSystems = []
-            systems = SI_SYSTEMS.systeminsights_list_system_info(
-                self.CONTENT_TYPE, self.ACCEPT, limit=100, skip=skip)
-            # skip += 10
-            # print(systems)
+            condition = True
+            searchInt = 0
 
-            for i in systems:
-                # if system id is in the system inventory
-                # sys insights can store items outside the inventory
-                if i.system_id in inventory:
-                    # filter by Apple Devices
+            while condition:
+                systems = SI_SYSTEMS.systeminsights_list_system_info(self.CONTENT_TYPE, self.ACCEPT, limit=100, skip=searchInt)
+                for i in systems:
                     if i._hardware_vendor.strip() == 'Apple Inc.':
                         # create list of systems which have system insights data
                         allSystems.append(i.system_id)
+                    searchInt += 100
+                    if len(systems) != 100:
+                        condition = False
             # return list of systems wish systeminsights data
             return allSystems
         except ApiException as err:
@@ -290,7 +285,7 @@ class JumpCloudImporter(Processor):
                 apps = SI_APPS.systeminsights_list_apps(
                     self.CONTENT_TYPE, self.ACCEPT, skip=searchInt, limit=100, filter=search)
                 for i in apps:
-                    if "/Applications/" in i.path:
+                    if "/Applications/" + app in i.path:
                         appArry.append(i.bundle_name)
                         # print(i.bundle_name + " " + i.bundle_short_version)
                         if app == i.bundle_name:
@@ -507,15 +502,13 @@ class JumpCloudImporter(Processor):
         query = (
             '''
 #!/bin/bash
-# Populate systemGroupID variable before running the command
-# this variable should correspond to the AutoPkg group from JCImporter
-
-systemGroupID="{0}"
 
 #---------------------Imported from JC Importer-----------------------
 curl --silent --output "/tmp/{1}" "{2}"
 installer -pkg "/tmp/{1}" -target /
 #--------------------Do not modify below this line--------------------
+
+systemGroupID="{0}"
 
 # Parse the systemKey from the conf file.
 conf="$(cat /opt/jc/jcagent.conf)"
@@ -801,6 +794,7 @@ exit 0
                 # QUERY APPS ON SYSTEMS
                 print("============== BEGIN VERSION QUERY ==============")
                 self.query_app_versions()
+                self.missingUpdate.clear()
                 print("=============== END VERSION QUERY ===============")
                 print("=================================================")
 

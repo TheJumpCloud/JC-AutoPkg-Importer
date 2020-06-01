@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Identifier</key>
+	<string>local.recipe.jumpcloud.Tunnelblick</string>
+	<key>Input</key>
+	<dict>
+		<key>BUNDLE_ID</key>
+		<string>net.tunnelblick.tunnelblick</string>
+		<key>NAME</key>
+		<string>Tunnelblick</string>
+	</dict>
+	<key>ParentRecipe</key>
+	<string>com.github.homebysix.pkg.Tunnelblick</string>
+	<key>Process</key>
+    <array>
+        <dict>
+            <key>Processor</key>
+            <string>JumpCloudImporter</string>
+            <key>Arguments</key>
+            <dict>
+                <key>JC_DIST</key>
+                <string>AWS</string>
+				<key>AWS_BUCKET</key>
+				<string>jcautopkg</string>
+                <key>JC_SYSGROUP</key>
+                <string>AutoPkg-%NAME%-%version%</string>
+				<key>JC_TYPE</key>
+				<string>auto</string>
+            </dict>
+        </dict>
+    </array>
+	<key>ParentRecipeTrustInfo</key>
+	<dict>
+		<key>non_core_processors</key>
+		<dict/>
+		<key>parent_recipes</key>
+		<dict>
+			<key>com.github.homebysix.download.Tunnelblick</key>
+			<dict>
+				<key>git_hash</key>
+				<string>cbd7e51d00a0b58e3b42eda713bd3c9667499c1e</string>
+				<key>path</key>
+				<string>~/Library/AutoPkg/RecipeRepos/com.github.autopkg.homebysix-recipes/Tunnelblick/Tunnelblick.download.recipe</string>
+				<key>sha256_hash</key>
+				<string>b62662d6f5f95f6916bbb5efc63ded1a7eebd286dff605bbdf16e9801881b16b</string>
+			</dict>
+			<key>com.github.homebysix.pkg.Tunnelblick</key>
+			<dict>
+				<key>git_hash</key>
+				<string>4f95845e835d58b5d55431757ed401698e91fac1</string>
+				<key>path</key>
+				<string>~/Library/AutoPkg/RecipeRepos/com.github.autopkg.homebysix-recipes/Tunnelblick/Tunnelblick.pkg.recipe</string>
+				<key>sha256_hash</key>
+				<string>78dbe591cf3185bf46a783072bd762f9e1c153bcf3d7923d22a5879c01b10730</string>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>
