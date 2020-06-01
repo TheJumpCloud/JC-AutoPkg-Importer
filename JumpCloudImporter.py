@@ -253,7 +253,7 @@ class JumpCloudImporter(Processor):
                 # sys insights can store items outside the inventory
                 if i.system_id in inventory:
                     # filter by Apple Devices
-                    if i._hardware_vendor == 'Apple Inc.':
+                    if i._hardware_vendor.strip() == 'Apple Inc.':
                         # create list of systems which have system insights data
                         allSystems.append(i.system_id)
             # return list of systems wish systeminsights data
