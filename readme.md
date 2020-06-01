@@ -42,7 +42,7 @@ When creating an override, add the JumpCloud Processor in the Process array of a
             <key>JC_DIST</key>
             <string>AWS</string>
             <key>JC_SYSGROUP</key>
-            <string>%NAME%-AutoPkg-%version%</string>
+            <string>AutoPkg-%NAME%-%version%</string>
             <key>JC_TYPE</key>
             <string>auto</string>
         </dict>

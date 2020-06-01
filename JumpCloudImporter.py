@@ -328,6 +328,8 @@ class JumpCloudImporter(Processor):
 
         If systems do not have the latest version of the app they are added
         to the AutoPkg system group.
+
+        # TODO: fix for bulk runs where the app version isn't passed per recipe
         """
         for i in self.missingUpdate:
             if (i["app_version"] != self.env.get("version") or self.env.get("version") == "0.0.0.0"):
