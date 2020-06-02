@@ -140,13 +140,14 @@ class JumpCloudImporter(Processor):
             "required": False,
             "description": "type of deployment JumpCloud will process "
             "this field only be one of three values listed below: "
-            "self, auto or update"
+            "self, auto, update or manual"
             "self - no scoping processed, just uses the commands API"
             "auto - system insights required, searches the database for "
             "systems and the specific app versions requested and builds "
             "groups based on that data"
             "update - deploy latest version of app to systems who already "
-            "have that app installed.",
+            "have that app installed."
+            "manual - no group creation, just create the command",
             "default": "self"
         },
         "JC_DIST": {
@@ -422,7 +423,7 @@ class JumpCloudImporter(Processor):
                 self.CONTENT_TYPE, self.ACCEPT, filter=filter)
             # print(api_response)
             if api_response.total_count == 0:
-                print("Command does not exist")
+                print("Command does not exist, creating command")
                 return True
             else:
                 print("Command: " + name + " already exists")
@@ -499,16 +500,27 @@ class JumpCloudImporter(Processor):
         object_name = os.path.basename(file_name)
         JC_CMD = jcapiv1.CommandsApi(jcapiv1.ApiClient(self.CONFIGURATIONv1))
         # line indentations are deliberate to account for bash
-        query = (
-            '''
+        if self.env["JC_TYPE"] == "manual":
+            query = (
+                '''
+#!/bin/bash
+#---------------------Imported from JC Importer-----------------------
+curl --silent --output "/tmp/{0}" "{1}"
+installer -pkg "/tmp/{0}" -target /
+exit 0
+''')
+            query = query.format(object_name, url)
+        else:
+            query = (
+                '''
 #!/bin/bash
 
 #---------------------Imported from JC Importer-----------------------
-curl --silent --output "/tmp/{1}" "{2}"
-installer -pkg "/tmp/{1}" -target /
+curl --silent --output "/tmp/{0}" "{1}"
+installer -pkg "/tmp/{0}" -target /
 #--------------------Do not modify below this line--------------------
 
-systemGroupID="{0}"
+systemGroupID="{2}"
 
 # Parse the systemKey from the conf file.
 conf="$(cat /opt/jc/jcagent.conf)"
@@ -544,7 +556,7 @@ curl -s \\
 echo "JumpCloud system: ${{systemID}} removed from system group: ${{systemGroupID}}"
 exit 0
 ''')
-        query = query.format(self.sysGrpID, object_name, url)
+            query = query.format(object_name, url, self.sysGrpID)
         usr = self.env["JC_USER"]
         # files uploaded in list[str] format where str is an ID of a JumpCloud
         # file variable for selecting the AutoPkg package path
@@ -734,6 +746,7 @@ exit 0
             # object_name = file_name
 
         # Upload the file
+        print(Uploading: " + object_name + " to AWS bucket: " + bucket)
         s3_client = boto3.client('s3')
         try:
             response = s3_client.upload_file(file_name, bucket, object_name)
@@ -742,7 +755,7 @@ exit 0
             url = "https://s3-%s.amazonaws.com/%s/%s" % (
                 location, bucket, object_name)
             self.cmdUrl = url
-            # print(url)
+            # print("Object URL: " + url)
         except ClientError as e:
             logging.error(e)
             return False
@@ -774,16 +787,18 @@ exit 0
             self.define_group(self.env["JC_SYSGROUP"])
 
             # Check if group defined above exists
-            if self.get_group(self.sysGrpName):
-                print("System group exists, no need to create new group")
-            else:
-                print("System group does not exist, creating group:")
-                self.set_group(self.sysGrpName)
-                # verify the group was created and get the new ID
-                self.get_group(self.sysGrpName)
+            if self.env["JC_TYPE"] != "manual":
+                if self.get_group(self.sysGrpName):
+                    print("System group exists, no need to create new group")
+                else:
+                    print("System group does not exist, creating group:")
+                    self.set_group(self.sysGrpName)
+                    # verify the group was created and get the new ID
+                    self.get_group(self.sysGrpName)
 
-            if self.env["JC_TYPE"] == "auto" or "update":
+            if self.env["JC_TYPE"] == "auto" or self.env["JC_TYPE"] == "update":
                 # QUERY SYSTEMS
+                print(self.env["JC_TYPE"])
                 print("============== BEGIN SYSTEM QUERY ===============")
                 for i in self.get_si_systems():
                     self.get_si_apps_id(i, self.env['NAME'])
@@ -832,16 +847,17 @@ exit 0
             print("=============== END COMMAND CHECK ===============")
             print("=================================================")
 
-            print("========== BEGIN COMMAND ASSOCIATIONS ===========")
-            # Associate command with system group
-            if not self.associate_command_with_group_list(self.get_command_id(self.env["globalCmdName"]), self.sysGrpID):
-                self.associate_command_with_group_post(
-                    self.get_command_id(self.env["globalCmdName"]), self.sysGrpID)
-            else:
-                print("Command Already associated with the group")
+            if self.env["JC_TYPE"] != "manual":
+                print("========== BEGIN COMMAND ASSOCIATIONS ===========")
+                # Associate command with system group
+                if not self.associate_command_with_group_list(self.get_command_id(self.env["globalCmdName"]), self.sysGrpID):
+                    self.associate_command_with_group_post(
+                        self.get_command_id(self.env["globalCmdName"]), self.sysGrpID)
+                else:
+                    print("Command Already associated with the group")
 
-            print("=========== END COMMAND ASSOCIATIONS ============")
-            print("=================================================")
+                print("=========== END COMMAND ASSOCIATIONS ============")
+                print("=================================================")
 
             self.output("The input variable data '%s' was given to this "
                         "Processor." % self.env['NAME'])

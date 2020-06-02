@@ -31,7 +31,7 @@
                 <key>JC_SYSGROUP</key>
                 <string>AutoPkg-%NAME%-%version%</string>
 				<key>JC_TYPE</key>
-				<string>update</string>
+				<string>manual</string>
             </dict>
         </dict>
     </array>
