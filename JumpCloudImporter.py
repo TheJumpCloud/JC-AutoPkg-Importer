@@ -75,6 +75,14 @@ class JumpCloudImporter(Processor):
 
     Use Case:
     Updating systems who have a specific software title installed
+
+    Manual:
+    Manual deployment runs will create the command containing a link to the
+    package. No system groups are created. Command is built without the run-
+    once context.
+
+    Use Case:
+    Create commands and do not specify a group association.
     """
     # Define Class Variables
     description = __doc__
