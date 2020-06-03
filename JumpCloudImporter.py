@@ -97,8 +97,9 @@ class JumpCloudImporter(Processor):
     missingUpdate = []
     # Name of System Group
     sysGrpName = ""
-    # ID of System Group
+    # ID of System Groups
     sysGrpID = ""
+    sysGrpPostID = ""
     # Name of Command
     cmdName = ""
     # ID of Command
@@ -258,21 +259,15 @@ class JumpCloudImporter(Processor):
         # inventory = []
         SI_SYSTEMS = jcapiv2.SystemInsightsApi(
             jcapiv2.ApiClient(self.CONFIGURATIONv2))
-        # V1_SYSTEMS = jcapiv1.SystemsApi(jcapiv1.ApiClient(self.CONFIGURATIONv1))
-        # V1_api_response = V1_SYSTEMS.systems_list(self.CONTENT_TYPE, self.ACCEPT)
-        # pprint(V1_api_response)
-        # for i in V1_api_response.results:
-            # inventory.append(i._id)
-        # print("INVENTORY: " + str(inventory))
-        try:
-            # skip = 0
 
+        try:
             allSystems = []
             condition = True
             searchInt = 0
 
             while condition:
-                systems = SI_SYSTEMS.systeminsights_list_system_info(self.CONTENT_TYPE, self.ACCEPT, limit=100, skip=searchInt)
+                systems = SI_SYSTEMS.systeminsights_list_system_info(
+                    self.CONTENT_TYPE, self.ACCEPT, limit=100, skip=searchInt)
                 for i in systems:
                     if i._hardware_vendor.strip() == 'Apple Inc.':
                         # create list of systems which have system insights data
@@ -280,11 +275,26 @@ class JumpCloudImporter(Processor):
                     searchInt += 100
                     if len(systems) != 100:
                         condition = False
-            # return list of systems wish systeminsights data
-            return allSystems
         except ApiException as err:
             print(
                 "Exception when calling SystemInsightsApi->systeminsights_list_system_info %s\n" % err)
+
+        # Remove systems already in the post install system group
+        # TODO: turn into own function to check for membership.
+        JC_SYS_GROUP = jcapiv2.SystemGroupMembersMembershipApi(
+            jcapiv2.ApiClient(self.CONFIGURATIONv2))
+        try:
+            getstuff = JC_SYS_GROUP.graph_system_group_membership(
+                self.sysGrpPostID, self.CONTENT_TYPE, self.ACCEPT)
+            for i in getstuff:
+                print(i.id)
+                while i.id in allSystems:
+                    allSystems.remove(i.id)
+                self.remove_system_from_group(i.id, self.sysGrpPostID)
+        except ApiException as err:
+            print(
+                "Exception when calling SystemGroupMembersApi->graph_system_group_members_post:" % err)
+        return allSystems
 
     def get_si_apps_id(self, sysID, app):
         """This function gathers information about each system insights
@@ -552,6 +562,7 @@ installer -pkg "/tmp/{0}" -target /
 #------------------- Do not modify below this line -------------------
 
 systemGroupID="{2}"
+systemGroupPostID="{3}"
 
 # Parse the systemKey from the conf file.
 conf="$(cat /opt/jc/jcagent.conf)"
@@ -585,9 +596,30 @@ curl -s \\
 	"https://console.jumpcloud.com/api/v2/systemgroups/${{systemGroupID}}/members"
 
 echo "JumpCloud system: ${{systemID}} removed from system group: ${{systemGroupID}}"
+
+# Get the current time.
+now=$(date -u "+%a, %d %h %Y %H:%M:%S GMT")
+
+# create the string to sign from the request-line and the date
+signstr="POST /api/v2/systemgroups/${{systemGroupPostID}}/members HTTP/1.1\\ndate: ${{now}}"
+
+# create the signature
+signature=$(printf "$signstr" | openssl dgst -sha256 -sign /opt/jc/client.key | openssl enc -e -a | tr -d '\\n')
+
+curl -s \\
+	-X 'POST' \\
+	-H 'Content-Type: application/json' \\
+	-H 'Accept: application/json' \\
+	-H "Date: ${{now}}" \\
+	-H "Authorization: Signature keyId=\\"system/${{systemID}}\\",headers=\\"request-line date\\",algorithm=\\"rsa-sha256\\",signature=\\"${{signature}}\\"" \\
+	-d '{{"op": "add","type": "system","id": "'${{systemID}}'"}}' \\
+	"https://console.jumpcloud.com/api/v2/systemgroups/${{systemGroupPostID}}/members"
+
+echo "JumpCloud system: ${{systemID}} added to post install system group: ${{systemGroupPostID}}"
 exit 0
 ''')
-        query = query.format(object_name, url, self.sysGrpID)
+        query = query.format(
+            object_name, url, self.sysGrpID, self.sysGrpPostID)
         usr = self.env["JC_USER"]
         # files uploaded in list[str] format where str is an ID of a JumpCloud
         # file variable for selecting the AutoPkg package path
@@ -691,13 +723,25 @@ exit 0
 
     def get_group(self, inputGroup):
         """Search JumpCloud for existing group"""
-        JC_GROUPS = jcapiv2.SystemGroupsApi(jcapiv2.ApiClient(self.CONFIGURATIONv2))
+        JC_GROUPS = jcapiv2.SystemGroupsApi(
+            jcapiv2.ApiClient(self.CONFIGURATIONv2))
         try:
             search = ['name:eq:%s' % inputGroup]
-            lGroup = JC_GROUPS.groups_system_list(
+            listGroup = JC_GROUPS.groups_system_list(
                 self.CONTENT_TYPE, self.ACCEPT, filter=search)
 
-            for i in lGroup:
+            postGroup = inputGroup + "-Complete"
+            # print("THE POST INSTALL GROUP ID IS: " + postGroup)
+            searchPost = ['name:eq:%s' % postGroup]
+            listPostGroup = JC_GROUPS.groups_system_list(
+                self.CONTENT_TYPE, self.ACCEPT, filter=searchPost)
+
+            for k in listPostGroup:
+                if (k.name == postGroup):
+                    self.sysGrpPostID = k.id
+                    print("THE POST INSTALL GROUP ID IS: " + self.sysGrpPostID)
+
+            for i in listGroup:
                 if (i.name == inputGroup):
                     self.sysGrpID = i.id
                     print("THE GROUP ID IS: " + self.sysGrpID)
@@ -713,11 +757,18 @@ exit 0
     def set_group(self, inputGroup):
         """This function creates a new system group"""
         # build the template group object based off user input or default values
-        JC_GROUPS = jcapiv2.SystemGroupsApi(jcapiv2.ApiClient(self.CONFIGURATIONv2))
+        JC_GROUPS = jcapiv2.SystemGroupsApi(
+            jcapiv2.ApiClient(self.CONFIGURATIONv2))
         try:
+            # Set the Pre-Install Group
             body = jcapiv2.SystemGroupData(inputGroup)
-            nGroup = JC_GROUPS.groups_system_post(
+            newGroup = JC_GROUPS.groups_system_post(
                 self.CONTENT_TYPE, self.ACCEPT, body=body)
+
+            # Set the Post-Install Group
+            postBody = jcapiv2.SystemGroupData(inputGroup + "-Complete")
+            newPostGroup = JC_GROUPS.groups_system_post(
+                self.CONTENT_TYPE, self.ACCEPT, body=postBody)
 
         except ApiException as err:
             print("Exception when calling SystemGroupsApi->SystemGroupData: %s\n" % err)
