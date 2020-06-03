@@ -162,7 +162,6 @@ class JumpCloudImporter(Processor):
         "JC_DIST": {
             "required": True,
             "description": "dist point for uploading compiled packages"
-            "TODO: set this as a var in ~/Lib/prefs/com.github.autopkg.plist"
             "If dist = AWS this will upload to an AWS Bucket and use the functions"
             "to do just that",
             "default": "AWS"
@@ -172,9 +171,30 @@ class JumpCloudImporter(Processor):
             "description": "Bucket name within AWS to upload packages",
             "default": "jcautopkg"
         },
-        "JC_DIY": {
+        "JC_TRIGGER": {
             "required": False,
-            "description": "dict for AWS bucket"
+            "description":
+                "JumpCloud Trigger for scheduling commands"
+                "Valid triggers are: True, False",
+            "default": False
+        },
+        "JC_REPEAT_TYPE": {
+            "required": False,
+            "description":
+                "JumpCloud Trigger for repeating scheduling commands"
+                "default value is minute trigger if the JC_TRIGGER"
+                "is set to repeated"
+                "Valid triggers are: minute, hour, day, week, month",
+            "default": "minute"
+        },
+        "JC_REPEAT_CRON": {
+            "required": False,
+            "description":
+                "JumpCloud Trigger for repeating scheduling commands"
+                "default value is 15 min trigger if the JC_TRIGGER"
+                "is set to repeated"
+                "Valid triggers are valid cron strings",
+            "default": "0 */15 * * * *"
         }
     }
     output_variables = {
@@ -332,8 +352,6 @@ class JumpCloudImporter(Processor):
 
         If systems do not have the latest version of the app they are added
         to the AutoPkg system group.
-
-        # TODO: fix for bulk runs where the app version isn't passed per recipe
         """
         for i in self.missingUpdate:
             if (i["app_version"] != self.env.get("version") or self.env.get("version") == "0.0.0.0"):
@@ -512,9 +530,14 @@ class JumpCloudImporter(Processor):
             query = (
                 '''
 #!/bin/bash
-#---------------------Imported from JC Importer-----------------------
+#---------------- Imported from JC AutoPkg Importer ------------------
 curl --silent --output "/tmp/{0}" "{1}"
 installer -pkg "/tmp/{0}" -target /
+if [[ "$?" -eq "0" ]]; then
+    echo "Install Successful"
+else
+    echo "Install Failed"
+    exit 1
 exit 0
 ''')
             query = query.format(object_name, url)
@@ -522,11 +545,11 @@ exit 0
             query = (
                 '''
 #!/bin/bash
-
-#---------------------Imported from JC Importer-----------------------
+#---------------- Imported from JC AutoPkg Importer ------------------
+set -e
 curl --silent --output "/tmp/{0}" "{1}"
 installer -pkg "/tmp/{0}" -target /
-#--------------------Do not modify below this line--------------------
+#------------------- Do not modify below this line -------------------
 
 systemGroupID="{2}"
 
@@ -564,21 +587,37 @@ curl -s \\
 echo "JumpCloud system: ${{systemID}} removed from system group: ${{systemGroupID}}"
 exit 0
 ''')
-            query = query.format(object_name, url, self.sysGrpID)
+        query = query.format(object_name, url, self.sysGrpID)
         usr = self.env["JC_USER"]
         # files uploaded in list[str] format where str is an ID of a JumpCloud
         # file variable for selecting the AutoPkg package path
         #TODO: switch to self.cmdName
         cmdName = self.env["globalCmdName"]
+        if self.env["JC_TRIGGER"] == True:
+            cmdLaunch = "repeated"
+            cmdRepeat = self.env["JC_REPEAT_TYPE"]
+            cmdCron = self.env["JC_REPEAT_CRON"]
 
         # use when uploading to a distribution point
-        body = jcapiv1.Command(
-            name="%s" % cmdName,
-            command="%s" % query,
-            command_type="mac",
-            user="%s" % usr,
-            timeout="900",
-        )
+        if self.env['JC_TRIGGER'] == True:
+            body = jcapiv1.Command(
+                name="%s" % cmdName,
+                command="%s" % query,
+                command_type="mac",
+                launch_type="%s" % cmdLaunch,
+                schedule_repeat_type="%s" % cmdRepeat,
+                schedule="%s" % cmdCron,
+                user="%s" % usr,
+                timeout="900",
+            )
+        else:
+            body = jcapiv1.Command(
+                name="%s" % cmdName,
+                command="%s" % query,
+                command_type="mac",
+                user="%s" % usr,
+                timeout="900",
+            )
         try:
             # update the command
             api_response = JC_CMD.commands_put(
