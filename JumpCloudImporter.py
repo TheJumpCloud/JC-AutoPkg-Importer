@@ -112,10 +112,11 @@ class JumpCloudImporter(Processor):
 
     input_variables = {
         "JC_API": {
-            "required": True,
+            "required": False,
             "description":
                 "Password of api user, optionally set as a key in "
                 "the com.github.autopkg preference file.",
+            "default": "",
         },
         "JC_SYSGROUP": {
             "required": False,
@@ -204,27 +205,26 @@ class JumpCloudImporter(Processor):
     def connect_jc_online(self):
         """the connect_jc_online function is used once to set up the configuration
         of the API key to the jcapi version 1 and 2
-        """
-        # Set up the configuration object with your API key for authorization
-        # JC_API is stored in ~/Library/Preferences/com.github.autopkg.plist
-        # set by running:
-        # defaults write ~/Library/Preferences/com.github.autopkg.plist JC_API your_api_key
-        kwargs = {
-            'api': self.env['JC_API']
-        }
 
-        # Key Assignment #
-        # From plist
-        API_KEY = self.env['JC_API']
-        # Interactive
-        # key = getpass.getpass("JumpCloud API Key: ", stream=None)
-        # API_KEY = key
+        If the JC_API key is stored in ~/Library/Preferences/com.github.autopkg.plist
+        this processor will use that key value to connect to JumpCloud.
+
+        If the JC_API key value is not stored locally, the terminal user is prompted
+        to enter their API key during the recipe run.
+        """
+
+        # Assign the API Key variable
+        if self.env['JC_API'] != "":
+            # If JC_API is stored in ~/Library/Preferences/com.github.autopkg.plist
+            API_KEY = self.env['JC_API']
+        else:
+            # Prompt user for API Key
+            key = getpass.getpass("JumpCloud API Key: ", stream=None)
+            API_KEY = key
 
         self.CONFIGURATIONv2.api_key['x-api-key'] = API_KEY
         self.jumpcloud = jcapiv2.UserGroupsApi(
             jcapiv2.ApiClient(self.CONFIGURATIONv2))
-
-        # API_KEY = self.env['JC_API']
         self.CONFIGURATIONv1.api_key['x-api-key'] = API_KEY
 
     def get_si_systems(self):
@@ -754,7 +754,7 @@ exit 0
             # object_name = file_name
 
         # Upload the file
-        print(Uploading: " + object_name + " to AWS bucket: " + bucket)
+        print("Uploading: " + object_name + " to AWS bucket: " + bucket)
         s3_client = boto3.client('s3')
         try:
             response = s3_client.upload_file(file_name, bucket, object_name)
