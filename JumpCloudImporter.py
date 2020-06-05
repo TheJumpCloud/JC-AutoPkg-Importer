@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 import sys
 import os
+import threading
 import datetime
 import jcapiv1
 import jcapiv2
@@ -30,6 +31,27 @@ from botocore.exceptions import ClientError
 
 __all__ = ["JumpCloudImporter"]
 __version__ = "0.1.1"
+
+# Progress Reporter for AWS Object Uploads
+class ProgressPercentage(object):
+
+    def __init__(self, filename):
+        self._filename = filename
+        self._size = float(os.path.getsize(filename))
+        self._seen_so_far = 0
+        self._lock = threading.Lock()
+
+    def __call__(self, bytes_amount):
+        # To simplify, assume this is hooked up to a single filename
+        with self._lock:
+            self._seen_so_far += bytes_amount
+            percentage = (self._seen_so_far / self._size) * 100
+            sys.stdout.write(
+                "\r%s  %s / %s  (%.2f%%)" % (
+                    self._filename, self._seen_so_far, self._size,
+                    percentage))
+            sys.stdout.flush()
+            print(" ")
 
 class JumpCloudImporter(Processor):
     """This processor provides JumpCloud admins with a set of basic functions
@@ -93,6 +115,7 @@ class JumpCloudImporter(Processor):
     CONFIGURATIONv1 = jcapiv1.Configuration()
 
     # Org ID variable
+    API_KEY = ""
     ORG_ID = ""
     # missingUpdate is an array to hold systems missing the app updates from
     # the app currently being queried.
@@ -229,6 +252,7 @@ class JumpCloudImporter(Processor):
         self.globalCmdName = None
         self.version = None
         self.appName = self.env['NAME']
+        os.environ["joe"] = self.env['JC_API']
         # self.ORG_ID = ORG_ID
         # self.API_KEY = API_KEY
         # self.env['JC_API'] = ''
@@ -250,15 +274,16 @@ class JumpCloudImporter(Processor):
         # Assign the API Key variable
         if self.env['JC_API'] != '':
             # If JC_API is stored in ~/Library/Preferences/com.github.autopkg.plist
-            API_KEY = self.env['JC_API']
+            self.API_KEY = self.env['JC_API']
         else:
             # Prompt user for API Key
             key = getpass.getpass("JumpCloud API Key: ", stream=None)
-            API_KEY = key
+            self.API_KEY = key
+            self.env['JC_API'] = key
 
         # set configs for API endpoint calls
-        self.CONFIGURATIONv1.api_key['x-api-key'] = API_KEY
-        self.CONFIGURATIONv2.api_key['x-api-key'] = API_KEY
+        self.CONFIGURATIONv1.api_key['x-api-key'] = self.API_KEY
+        self.CONFIGURATIONv2.api_key['x-api-key'] = self.API_KEY
 
         if self.env['JC_ORG'] == "":
             # Get possible orgs:
@@ -269,18 +294,18 @@ class JumpCloudImporter(Processor):
                     self.CONTENT_TYPE, self.ACCEPT)
                 # print(orgsList)
                 if orgsList.total_count == 1:
-                    print(orgsList.results[0].display_name)
+                    # print(orgsList.results[0].display_name)
                     self.env['JC_ORG'] = orgsList.results[0].id
                     self.ORG_ID = orgsList.results[0].id
 
                 else:
                     index = 0
                     for i in orgsList.results:
-                        print(str(index) + "|" + i.display_name)
+                        print(str(index) + " | " + i.display_name)
                         index += 1
                     selection = input ("Select the org you would like to connect to: ")
                     selection = int(selection)
-                    print(orgsList.results[selection].id)
+                    # print(orgsList.results[selection].id)
                     # if selection in orgsList.results[selection]:
                     self.env['JC_ORG'] = orgsList.results[selection].id
                     self.ORG_ID = orgsList.results[selection].id
@@ -293,7 +318,6 @@ class JumpCloudImporter(Processor):
         else:
             org = getpass.getpass("JumpCloud ORG ID: ", stream=None)
             self.ORG_ID = org
-        print(self.ORG_ID)
         # self.jumpcloud = jcapiv2.UserGroupsApi(
         #     jcapiv2.ApiClient(self.CONFIGURATIONv2))
 
@@ -896,7 +920,8 @@ exit 0
         print("Uploading: " + object_name + " to AWS bucket: " + bucket)
         s3_client = boto3.client('s3')
         try:
-            response = s3_client.upload_file(file_name, bucket, object_name)
+            response = s3_client.upload_file(
+                file_name, bucket, object_name, Callback=ProgressPercentage(file_name))
             location = boto3.client('s3').get_bucket_location(
                 Bucket=bucket)['LocationConstraint']
             url = "https://s3-%s.amazonaws.com/%s/%s" % (
@@ -928,7 +953,7 @@ exit 0
             print("=================================================")
             # Connect to API v1 and 2 endpoints
             self.connect_jc_online()
-            print(self.ORG_ID)
+            # print(os.environ["joe"])
 
             # Define Group Name based on AutoPkg software (default)
             # Define Group Name based on user input if necessary
