@@ -119,6 +119,13 @@ class JumpCloudImporter(Processor):
                 "the com.github.autopkg preference file.",
             "default": "",
         },
+        "JC_ORG": {
+            "required": False,
+            "description":
+                "ORG ID, optionally set as a key in "
+                "the com.github.autopkg preference file.",
+            "default": "",
+        },
         "JC_SYSGROUP": {
             "required": False,
             "description": "If provided in recipe, the processor will build a smart "
@@ -219,6 +226,7 @@ class JumpCloudImporter(Processor):
         self.globalCmdName = None
         self.version = None
         self.appName = self.env['NAME']
+        self.ORG_ID = '#TODO: make dynamic'
         # self.JC_DIST = self.env['JC_DIST']
         # self.SystemGroupsApi = None
         # self.UserGroupsApi = None
@@ -267,7 +275,7 @@ class JumpCloudImporter(Processor):
 
             while condition:
                 systems = SI_SYSTEMS.systeminsights_list_system_info(
-                    self.CONTENT_TYPE, self.ACCEPT, limit=100, skip=searchInt)
+                    self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, limit=100, skip=searchInt)
                 for i in systems:
                     if i._hardware_vendor.strip() == 'Apple Inc.':
                         # create list of systems which have system insights data
@@ -285,7 +293,7 @@ class JumpCloudImporter(Processor):
             jcapiv2.ApiClient(self.CONFIGURATIONv2))
         try:
             getstuff = JC_SYS_GROUP.graph_system_group_membership(
-                self.sysGrpPostID, self.CONTENT_TYPE, self.ACCEPT)
+                self.sysGrpPostID, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID)
             for i in getstuff:
                 print(i.id)
                 while i.id in allSystems:
@@ -322,7 +330,7 @@ class JumpCloudImporter(Processor):
 
             while condition:
                 apps = SI_APPS.systeminsights_list_apps(
-                    self.CONTENT_TYPE, self.ACCEPT, skip=searchInt, limit=100, filter=search)
+                    self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, skip=searchInt, limit=100, filter=search)
                 for i in apps:
                     if "/Applications/" + app in i.path:
                         appArry.append(i.bundle_name)
@@ -388,14 +396,14 @@ class JumpCloudImporter(Processor):
             id=system, op="add", type="system")
         try:
             getstuff = JC_SYS_GROUP.graph_system_group_membership(
-                group_id, self.CONTENT_TYPE, self.ACCEPT)
+                group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID)
             for i in getstuff:
                 composite.append(i.id)
             if system not in composite:
                 print("adding " + system + " to " + group)
                 self.changes[system] = group
                 JC_SYS_GROUP.graph_system_group_members_post(
-                    group_id, self.CONTENT_TYPE, self.ACCEPT, body=body)
+                    group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
             else:
                 print("system " + system + " already in group " + group)
         except ApiException as err:
@@ -412,13 +420,13 @@ class JumpCloudImporter(Processor):
             id=system, op="remove", type="system")
         try:
             getstuff = JC_SYS_GROUP.graph_system_group_membership(
-                group_id, self.CONTENT_TYPE, self.ACCEPT)
+                group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID)
             for i in getstuff:
                 composite.append(i.id)
             if system in composite:
                 print("removing " + system + " from " + group)
                 JC_SYS_GROUP.graph_system_group_members_post(
-                    group_id, self.CONTENT_TYPE, self.ACCEPT, body=body)
+                    group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
             else:
                 print("system " + system + " not in group " + group)
         except ApiException as err:
@@ -456,7 +464,7 @@ class JumpCloudImporter(Processor):
         try:
             # Get a Command File
             api_response = JC_CMD.commands_list(
-                self.CONTENT_TYPE, self.ACCEPT, filter=filter)
+                self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, filter=filter)
             # print(api_response)
             if api_response.total_count == 0:
                 print("Command does not exist, creating command")
@@ -477,7 +485,7 @@ class JumpCloudImporter(Processor):
         try:
             # Get a Command File
             api_response = JC_CMD.commands_list(
-                self.CONTENT_TYPE, self.ACCEPT, filter=filter)
+                self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, filter=filter)
             # result = api_response.get()
             # print("Get Python Testing")
             # print(api_response)
@@ -514,7 +522,7 @@ class JumpCloudImporter(Processor):
         try:
             # Get a Command File
             api_response = JC_CMD.commands_post(
-                self.CONTENT_TYPE, self.ACCEPT, body=body, async_req=True)
+                self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body, async_req=True)
             result = api_response.get()
             # print(dir(result))
             print("Command created: " + nameVar)
@@ -653,7 +661,7 @@ exit 0
         try:
             # update the command
             api_response = JC_CMD.commands_put(
-                id, self.CONTENT_TYPE, self.ACCEPT, body=body)
+                id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
             # for debugging:
             # print(api_response)
         except ApiExceptionV1 as err:
@@ -670,7 +678,7 @@ exit 0
             id=command_id, op="add", type="command")
         try:
             ASSOC_CMD.graph_system_group_associations_post(
-                group_id, self.CONTENT_TYPE, self.ACCEPT, body=body)
+                group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
         except ApiException as e:
             print("Exception when calling SystemGroupAssociationsApi->graph_system_group_associations_post: %s\n" % e)
 
@@ -686,7 +694,7 @@ exit 0
         targets = ['command']
         try:
             api_response = ASSOC_CMD.graph_system_group_associations_list(
-                group_id, self.CONTENT_TYPE, self.CONTENT_TYPE, targets)
+                group_id, self.CONTENT_TYPE, self.CONTENT_TYPE, x_org_id=self.ORG_ID, targets)
             # print(api_response)
             i = 0
             # should be zero for an array containing one command result
@@ -728,13 +736,13 @@ exit 0
         try:
             search = ['name:eq:%s' % inputGroup]
             listGroup = JC_GROUPS.groups_system_list(
-                self.CONTENT_TYPE, self.ACCEPT, filter=search)
+                self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, filter=search)
 
             postGroup = inputGroup + "-Complete"
             # print("THE POST INSTALL GROUP ID IS: " + postGroup)
             searchPost = ['name:eq:%s' % postGroup]
             listPostGroup = JC_GROUPS.groups_system_list(
-                self.CONTENT_TYPE, self.ACCEPT, filter=searchPost)
+                self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, filter=searchPost)
 
             for k in listPostGroup:
                 if (k.name == postGroup):
@@ -763,12 +771,12 @@ exit 0
             # Set the Pre-Install Group
             body = jcapiv2.SystemGroupData(inputGroup)
             newGroup = JC_GROUPS.groups_system_post(
-                self.CONTENT_TYPE, self.ACCEPT, body=body)
+                self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
 
             # Set the Post-Install Group
             postBody = jcapiv2.SystemGroupData(inputGroup + "-Complete")
             newPostGroup = JC_GROUPS.groups_system_post(
-                self.CONTENT_TYPE, self.ACCEPT, body=postBody)
+                self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=postBody)
 
         except ApiException as err:
             print("Exception when calling SystemGroupsApi->SystemGroupData: %s\n" % err)
@@ -896,7 +904,6 @@ exit 0
 
             if self.env["JC_TYPE"] == "auto" or self.env["JC_TYPE"] == "update":
                 # QUERY SYSTEMS
-                print(self.env["JC_TYPE"])
                 print("============== BEGIN SYSTEM QUERY ===============")
                 for i in self.get_si_systems():
                     self.get_si_apps_id(i, self.env['NAME'])
