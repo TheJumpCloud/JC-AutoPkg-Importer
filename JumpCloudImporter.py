@@ -92,8 +92,11 @@ class JumpCloudImporter(Processor):
     CONFIGURATIONv2 = jcapiv2.Configuration()
     CONFIGURATIONv1 = jcapiv1.Configuration()
 
+    # Org ID variable
+    ORG_ID = ""
     # missingUpdate is an array to hold systems missing the app updates from
     # the app currently being queried.
+    #TODO: change to instance variables
     missingUpdate = []
     # Name of System Group
     sysGrpName = ""
@@ -218,7 +221,7 @@ class JumpCloudImporter(Processor):
     def __init__(self, env=None, infile=None, outfile=None):
         """Set Instance Variables"""
         super(JumpCloudImporter, self).__init__(env, infile, outfile)
-        self.jumpcloud = None
+        # self.jumpcloud = None
         self.groups_user_list = None
         self.groups = None
         # self.JC_SYSGROUP = None
@@ -226,7 +229,9 @@ class JumpCloudImporter(Processor):
         self.globalCmdName = None
         self.version = None
         self.appName = self.env['NAME']
-        self.ORG_ID = '#TODO: make dynamic'
+        # self.ORG_ID = ORG_ID
+        # self.API_KEY = API_KEY
+        # self.env['JC_API'] = ''
         # self.JC_DIST = self.env['JC_DIST']
         # self.SystemGroupsApi = None
         # self.UserGroupsApi = None
@@ -243,7 +248,7 @@ class JumpCloudImporter(Processor):
         """
 
         # Assign the API Key variable
-        if self.env['JC_API'] != "":
+        if self.env['JC_API'] != '':
             # If JC_API is stored in ~/Library/Preferences/com.github.autopkg.plist
             API_KEY = self.env['JC_API']
         else:
@@ -251,10 +256,46 @@ class JumpCloudImporter(Processor):
             key = getpass.getpass("JumpCloud API Key: ", stream=None)
             API_KEY = key
 
-        self.CONFIGURATIONv2.api_key['x-api-key'] = API_KEY
-        self.jumpcloud = jcapiv2.UserGroupsApi(
-            jcapiv2.ApiClient(self.CONFIGURATIONv2))
+        # set configs for API endpoint calls
         self.CONFIGURATIONv1.api_key['x-api-key'] = API_KEY
+        self.CONFIGURATIONv2.api_key['x-api-key'] = API_KEY
+
+        if self.env['JC_ORG'] == "":
+            # Get possible orgs:
+            orgs = jcapiv1.OrganizationsApi(
+                jcapiv1.ApiClient(self.CONFIGURATIONv1))
+            try:
+                orgsList = orgs.organization_list(
+                    self.CONTENT_TYPE, self.ACCEPT)
+                # print(orgsList)
+                if orgsList.total_count == 1:
+                    print(orgsList.results[0].display_name)
+                    self.env['JC_ORG'] = orgsList.results[0].id
+                    self.ORG_ID = orgsList.results[0].id
+
+                else:
+                    index = 0
+                    for i in orgsList.results:
+                        print(str(index) + "|" + i.display_name)
+                        index += 1
+                    selection = input ("Select the org you would like to connect to: ")
+                    selection = int(selection)
+                    print(orgsList.results[selection].id)
+                    # if selection in orgsList.results[selection]:
+                    self.env['JC_ORG'] = orgsList.results[selection].id
+                    self.ORG_ID = orgsList.results[selection].id
+            except ApiExceptionV1 as e:
+                print(
+                    "Exception when calling OrganizationsApi->organization_list: %s\n" % e)
+
+        if self.env['JC_ORG'] != '':
+            self.ORG_ID = self.env['JC_ORG']
+        else:
+            org = getpass.getpass("JumpCloud ORG ID: ", stream=None)
+            self.ORG_ID = org
+        print(self.ORG_ID)
+        # self.jumpcloud = jcapiv2.UserGroupsApi(
+        #     jcapiv2.ApiClient(self.CONFIGURATIONv2))
 
     def get_si_systems(self):
         """This function compares the systems inventory with the v1 api, saves those
@@ -694,7 +735,7 @@ exit 0
         targets = ['command']
         try:
             api_response = ASSOC_CMD.graph_system_group_associations_list(
-                group_id, self.CONTENT_TYPE, self.CONTENT_TYPE, x_org_id=self.ORG_ID, targets)
+                group_id, self.CONTENT_TYPE, self.CONTENT_TYPE, targets, x_org_id=self.ORG_ID)
             # print(api_response)
             i = 0
             # should be zero for an array containing one command result
@@ -887,6 +928,7 @@ exit 0
             print("=================================================")
             # Connect to API v1 and 2 endpoints
             self.connect_jc_online()
+            print(self.ORG_ID)
 
             # Define Group Name based on AutoPkg software (default)
             # Define Group Name based on user input if necessary
