@@ -114,29 +114,6 @@ class JumpCloudImporter(Processor):
     CONFIGURATIONv2 = jcapiv2.Configuration()
     CONFIGURATIONv1 = jcapiv1.Configuration()
 
-    # Org ID variable
-    API_KEY = ""
-    ORG_ID = ""
-    # missingUpdate is an array to hold systems missing the app updates from
-    # the app currently being queried.
-    #TODO: change to instance variables
-    missingUpdate = []
-    # Name of System Group
-    sysGrpName = ""
-    # ID of System Groups
-    sysGrpID = ""
-    sysGrpPostID = ""
-    # Name of Command
-    cmdName = ""
-    # ID of Command
-    cmdId = ""
-    # Download link for the cmd
-    cmdUrl = ""
-    # type of AutoPkg run
-    autopkgType = ""
-    # Dict of changes processed throughout the importer run
-    changes = {}
-
     input_variables = {
         "JC_API": {
             "required": False,
@@ -154,8 +131,9 @@ class JumpCloudImporter(Processor):
         },
         "JC_SYSGROUP": {
             "required": False,
-            "description": "If provided in recipe, the processor will build a smart "
-            "group and assign systems without that application and version to the new group",
+            "description":
+                "If provided in recipe, the processor will build a smart "
+                "group and assign systems without that application and version to the new group",
             "default": "default"
         },
         "pkg_path": {
@@ -175,34 +153,38 @@ class JumpCloudImporter(Processor):
         },
         "JC_USER": {
             "required": False,
-            "description": "JumpCloud user to who is designated to run command"
-            "root user id in JumpCloud is: 000000000000000000000000",
+            "description":
+                "JumpCloud user to who is designated to run command"
+                "root user id in JumpCloud is: 000000000000000000000000",
             "default": "000000000000000000000000"
         },
         "JC_TYPE": {
             "required": False,
-            "description": "type of deployment JumpCloud will process "
-            "this field only be one of three values listed below: "
-            "self, auto, update or manual"
-            "self - no scoping processed, just uses the commands API"
-            "auto - system insights required, searches the database for "
-            "systems and the specific app versions requested and builds "
-            "groups based on that data"
-            "update - deploy latest version of app to systems who already "
-            "have that app installed."
-            "manual - no group creation, just create the command",
+            "description":
+                "type of deployment JumpCloud will process "
+                "this field only be one of three values listed below: "
+                "self, auto, update or manual"
+                "self - no scoping processed, just uses the commands API"
+                "auto - system insights required, searches the database for "
+                "systems and the specific app versions requested and builds "
+                "groups based on that data"
+                "update - deploy latest version of app to systems who already "
+                "have that app installed."
+                "manual - no group creation, just create the command",
             "default": "self"
         },
         "JC_DIST": {
             "required": True,
-            "description": "dist point for uploading compiled packages"
-            "If dist = AWS this will upload to an AWS Bucket and use the functions"
-            "to do just that",
+            "description":
+                "dist point for uploading compiled packages"
+                "If dist = AWS this will upload to an AWS Bucket and use the functions"
+                "to do just that",
             "default": "AWS"
         },
         "AWS_BUCKET": {
             "required": True,
-            "description": "Bucket name within AWS to upload packages",
+            "description":
+                "Bucket name within AWS to upload packages",
             "default": "jcautopkg"
         },
         "JC_TRIGGER": {
@@ -233,10 +215,12 @@ class JumpCloudImporter(Processor):
     }
     output_variables = {
         "module_file_path": {
-            "description": "Outputs this module's file path."
+            "description":
+                "Outputs this module's file path."
         },
         "jcautopkg_importer_results": {
-            "description": "results of autopkg and JC integration"
+            "description":
+                "results of autopkg and JC integration"
         }
     }
 
@@ -244,21 +228,22 @@ class JumpCloudImporter(Processor):
     def __init__(self, env=None, infile=None, outfile=None):
         """Set Instance Variables"""
         super(JumpCloudImporter, self).__init__(env, infile, outfile)
-        # self.jumpcloud = None
-        self.groups_user_list = None
         self.groups = None
-        # self.JC_SYSGROUP = None
         self.pkg_path = None
         self.globalCmdName = None
         self.version = None
-        self.appName = self.env['NAME']
-        os.environ["joe"] = self.env['JC_API']
-        # self.ORG_ID = ORG_ID
-        # self.API_KEY = API_KEY
-        # self.env['JC_API'] = ''
-        # self.JC_DIST = self.env['JC_DIST']
-        # self.SystemGroupsApi = None
-        # self.UserGroupsApi = None
+        self.appName = None
+        self.missingUpdate = []
+        self.sysGrpName = None
+        self.sysGrpID = None
+        self.sysGrpPostID = None
+        self.cmdName = None
+        self.cmdId = None
+        self.cmdUrl = None
+        self.autopkgType = None
+        self.changes = {}
+        self.API_KEY = None
+        self.ORG_ID = None
 
     def connect_jc_online(self):
         """the connect_jc_online function is used once to set up the configuration
@@ -287,6 +272,7 @@ class JumpCloudImporter(Processor):
 
         if self.env['JC_ORG'] == "":
             # Get possible orgs:
+            print("is none type")
             orgs = jcapiv1.OrganizationsApi(
                 jcapiv1.ApiClient(self.CONFIGURATIONv1))
             try:
@@ -947,13 +933,12 @@ exit 0
             print("========== JumpCloud AutoPkg Importer ==========")
             print("Importer Version: {}".format(__version__))
             print("Package Name: {}".format(self.env['NAME']))
-            print("Importer Package: {}".format(self.env['pathname']))
+            print("Package Location: {}".format(self.env['pathname']))
             print("Importer Type: {}".format(self.env['JC_TYPE']))
             print("AWS Bucket: {}".format(self.env['AWS_BUCKET']))
             print("=================================================")
             # Connect to API v1 and 2 endpoints
             self.connect_jc_online()
-            # print(os.environ["joe"])
 
             # Define Group Name based on AutoPkg software (default)
             # Define Group Name based on user input if necessary
