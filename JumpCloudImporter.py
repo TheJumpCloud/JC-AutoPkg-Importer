@@ -243,7 +243,7 @@ class JumpCloudImporter(Processor):
         self.ACCEPT = "application/json"
         self.CONFIGURATIONv2 = jcapiv2.Configuration()
         self.CONFIGURATIONv1 = jcapiv1.Configuration()
-        # os.environ['joe'] = None
+        self.verbose = self.env["verbose"]
 
     def connect_jc_online(self):
         """the connect_jc_online function is used once to set up the configuration
@@ -256,7 +256,7 @@ class JumpCloudImporter(Processor):
         to enter their API key during the recipe run.
         """
         # Check for API Key in os.enviorn
-        # Check for API Key in environment vars from input
+        # elif Check for API Key in environment vars from input
         # Else prompt for API Key
         if 'JC_ENV_API_KEY' in os.environ:
             print("setting env api key")
@@ -276,6 +276,9 @@ class JumpCloudImporter(Processor):
         self.CONFIGURATIONv1.api_key['x-api-key'] = self.API_KEY
         self.CONFIGURATIONv2.api_key['x-api-key'] = self.API_KEY
 
+        # Check for ORD ID in os.enviorn
+        # elif Check for ORD ID in environment vars from input
+        # Else prompt for MTP ORD ID
         if 'JC_ENV_ORG_ID' in os.environ:
             self.ORG_ID = os.environ['JC_ENV_ORG_ID']
         # Set the ORG ID
@@ -305,6 +308,18 @@ class JumpCloudImporter(Processor):
             except ApiExceptionV1 as e:
                 print(
                     "Exception when calling OrganizationsApi->organization_list: %s\n" % e)
+
+    def verbose_print(self, input):
+        """This function is used to print logging messages when AutoPkg is run in
+        verbose mode.
+
+        usage:
+        self.verbose_print("verbose message")
+        """
+        if self.verbose:
+            print(input)
+        else:
+            lambda *a: None
 
     def get_si_systems(self):
         """This function compares the systems inventory with the v1 api, saves those
