@@ -237,6 +237,9 @@ class JumpCloudImporter(Processor):
         self.cmdUrl = None
         self.autopkgType = None
         self.changes = {}
+        self.sysChanges = None
+        self.grpChanges = None
+        self.cmdChanges = None
         self.API_KEY = None
         self.ORG_ID = None
         self.CONTENT_TYPE = "application/json"
@@ -321,6 +324,50 @@ class JumpCloudImporter(Processor):
         else:
             lambda *a: None
 
+    def sys_tracker(self, system, group, opp):
+        """
+        """
+        # define tracking dict
+        if self.sysChanges is None:
+            self.sysChanges = {}
+            self.sysChanges["added"] = []
+            self.sysChanges["removed"] = []
+        # track changes
+        #TODO: breakout changes by group dict object
+        if self.sysChanges is not None:
+            if opp == "add":
+                self.sysChanges["added"].append(
+                    {"system: " + system, "group: " + group})
+            if opp == "remove":
+                self.sysChanges["removed"].append(
+                    {"system: " + system, "group: " + group})
+
+    def grp_tracker(self, group, opp):
+        """
+        """
+        if self.grpChanges is None:
+            self.grpChanges = {}
+            self.grpChanges["added"] = []
+
+        if self.grpChanges is not None:
+            if opp == "add":
+                self.grpChanges["added"].append(group)
+
+    def cmd_tracker(self, cmd, opp):
+        """
+        """
+        if self.cmdChanges is None:
+            self.cmdChanges = {}
+            self.cmdChanges["added"] = []
+
+        if self.cmdChanges is not None:
+            if opp == "add":
+                self.cmdChanges["added"].append(cmd)
+
+    def version_tracker(self, system, app, installedVersion):
+        """
+        """
+
     def get_si_systems(self):
         """This function compares the systems inventory with the v1 api, saves those
         systems to a list called inventory.
@@ -363,7 +410,7 @@ class JumpCloudImporter(Processor):
                 print(i.id)
                 while i.id in allSystems:
                     allSystems.remove(i.id)
-                self.remove_system_from_group(i.id, self.sysGrpPostID)
+                self.remove_system_from_group(i.id, self.sysGrpID)
         except ApiException as err:
             print(
                 "Exception when calling SystemGroupMembersApi->graph_system_group_members_post:" % err)
@@ -450,6 +497,7 @@ class JumpCloudImporter(Processor):
                 print(i["app_version"] + " already on latest version... " +
                       self.env.get("version"))
                 self.remove_system_from_group(i["system"], self.sysGrpID)
+                self.add_system_to_group(i["system"], self.sysGrpPostID)
 
     def add_system_to_group(self, system, group):
         """Adds system to a group"""
@@ -466,7 +514,8 @@ class JumpCloudImporter(Processor):
                 composite.append(i.id)
             if system not in composite:
                 print("adding " + system + " to " + group)
-                self.changes[system] = group
+                # self.changes[system] = group
+                self.sys_tracker(system, group, "add")
                 JC_SYS_GROUP.graph_system_group_members_post(
                     group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
             else:
@@ -490,6 +539,7 @@ class JumpCloudImporter(Processor):
                 composite.append(i.id)
             if system in composite:
                 print("removing " + system + " from " + group)
+                self.sys_tracker(system, group, "remove")
                 JC_SYS_GROUP.graph_system_group_members_post(
                     group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
             else:
@@ -588,8 +638,9 @@ class JumpCloudImporter(Processor):
             # Get a Command File
             api_response = JC_CMD.commands_post(
                 self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body, async_req=True)
-            result = api_response.get()
+            # result = api_response.get()
             # print(dir(result))
+            self.cmd_tracker(nameVar, "add")
             print("Command created: " + nameVar)
             # print(result)
         except ApiExceptionV1 as err:
@@ -837,11 +888,13 @@ exit 0
             body = jcapiv2.SystemGroupData(inputGroup)
             newGroup = JC_GROUPS.groups_system_post(
                 self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
+            self.grp_tracker(inputGroup, "add")
 
             # Set the Post-Install Group
             postBody = jcapiv2.SystemGroupData(inputGroup + "-Complete")
             newPostGroup = JC_GROUPS.groups_system_post(
                 self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=postBody)
+            self.grp_tracker(inputGroup + "-Complete", "add")
 
         except ApiException as err:
             print("Exception when calling SystemGroupsApi->SystemGroupData: %s\n" % err)
@@ -939,8 +992,15 @@ exit 0
         membership, system group additions, command creation and
         updates and uploading files to a distribution point.
         """
-        print("Summary of system to group changes")
-        pprint.pprint(self.changes, width=1)
+        if self.grpChanges is not None:
+            print("\nGroups added:")
+            pprint.pprint(self.grpChanges, width=1)
+        if self.cmdChanges is not None:
+            print("\nCommands Created:")
+            pprint.pprint(self.cmdChanges, width=1)
+        if self.sysChanges is not None:
+            print("\nSystems added to/ removed from: " + self.sysGrpName)
+            pprint.pprint(self.sysChanges, width=1)
 
     def main(self):
         try:
