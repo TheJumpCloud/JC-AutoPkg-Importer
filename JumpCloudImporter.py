@@ -109,11 +109,6 @@ class JumpCloudImporter(Processor):
     # Define Class Variables
     description = __doc__
 
-    CONTENT_TYPE = "application/json"
-    ACCEPT = "application/json"
-    CONFIGURATIONv2 = jcapiv2.Configuration()
-    CONFIGURATIONv1 = jcapiv1.Configuration()
-
     input_variables = {
         "JC_API": {
             "required": False,
@@ -244,6 +239,11 @@ class JumpCloudImporter(Processor):
         self.changes = {}
         self.API_KEY = None
         self.ORG_ID = None
+        self.CONTENT_TYPE = "application/json"
+        self.ACCEPT = "application/json"
+        self.CONFIGURATIONv2 = jcapiv2.Configuration()
+        self.CONFIGURATIONv1 = jcapiv1.Configuration()
+        # os.environ['joe'] = None
 
     def connect_jc_online(self):
         """the connect_jc_online function is used once to set up the configuration
@@ -255,57 +255,56 @@ class JumpCloudImporter(Processor):
         If the JC_API key value is not stored locally, the terminal user is prompted
         to enter their API key during the recipe run.
         """
-
-        # Assign the API Key variable
-        if self.env['JC_API'] != '':
+        # Check for API Key in os.enviorn
+        # Check for API Key in environment vars from input
+        # Else prompt for API Key
+        if 'JC_ENV_API_KEY' in os.environ:
+            print("setting env api key")
+            self.API_KEY = os.environ['JC_ENV_API_KEY']
+            # self.env['JC_API'] = os.environ['JC_ENV_API_KEY']
+        elif self.env['JC_API'] != '':
             # If JC_API is stored in ~/Library/Preferences/com.github.autopkg.plist
             self.API_KEY = self.env['JC_API']
         else:
             # Prompt user for API Key
             key = getpass.getpass("JumpCloud API Key: ", stream=None)
             self.API_KEY = key
-            self.env['JC_API'] = key
+            # Set Environment Variable
+            os.environ['JC_ENV_API_KEY'] = key
 
         # set configs for API endpoint calls
         self.CONFIGURATIONv1.api_key['x-api-key'] = self.API_KEY
         self.CONFIGURATIONv2.api_key['x-api-key'] = self.API_KEY
 
-        if self.env['JC_ORG'] == "":
-            # Get possible orgs:
-            print("is none type")
+        if 'JC_ENV_ORG_ID' in os.environ:
+            self.ORG_ID = os.environ['JC_ENV_ORG_ID']
+        # Set the ORG ID
+        elif self.env['JC_ORG'] != '':
+            self.ORG_ID = self.env['JC_ORG']
+        else:
             orgs = jcapiv1.OrganizationsApi(
                 jcapiv1.ApiClient(self.CONFIGURATIONv1))
             try:
                 orgsList = orgs.organization_list(
                     self.CONTENT_TYPE, self.ACCEPT)
-                # print(orgsList)
+                # if single org - set default settings
                 if orgsList.total_count == 1:
                     # print(orgsList.results[0].display_name)
-                    self.env['JC_ORG'] = orgsList.results[0].id
+                    os.environ['JC_ENV_ORG_ID'] = orgsList.results[0].id
                     self.ORG_ID = orgsList.results[0].id
-
                 else:
                     index = 0
                     for i in orgsList.results:
                         print(str(index) + " | " + i.display_name)
                         index += 1
-                    selection = input ("Select the org you would like to connect to: ")
+                    selection = input(
+                        "Select the org you would like to connect to: ")
                     selection = int(selection)
-                    # print(orgsList.results[selection].id)
-                    # if selection in orgsList.results[selection]:
-                    self.env['JC_ORG'] = orgsList.results[selection].id
+                    os.environ['JC_ENV_ORG_ID'] = orgsList.results[selection].id
                     self.ORG_ID = orgsList.results[selection].id
             except ApiExceptionV1 as e:
                 print(
                     "Exception when calling OrganizationsApi->organization_list: %s\n" % e)
-
-        if self.env['JC_ORG'] != '':
-            self.ORG_ID = self.env['JC_ORG']
-        else:
-            org = getpass.getpass("JumpCloud ORG ID: ", stream=None)
-            self.ORG_ID = org
-        # self.jumpcloud = jcapiv2.UserGroupsApi(
-        #     jcapiv2.ApiClient(self.CONFIGURATIONv2))
 
     def get_si_systems(self):
         """This function compares the systems inventory with the v1 api, saves those
