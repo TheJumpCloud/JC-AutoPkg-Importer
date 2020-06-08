@@ -235,6 +235,7 @@ class JumpCloudImporter(Processor):
         self.autopkgType = None
         self.changes = {}
         self.sysChanges = None
+        self.postSysChanges = None
         self.grpChanges = None
         self.cmdChanges = None
         self.API_KEY = None
@@ -313,19 +314,28 @@ class JumpCloudImporter(Processor):
         """
         """
         # define tracking dict
-        if self.sysChanges is None:
-            self.sysChanges = {}
-            self.sysChanges["added"] = []
-            self.sysChanges["removed"] = []
-        # track changes
-        #TODO: breakout changes by group dict object
-        if self.sysChanges is not None:
-            if opp == "add":
-                self.sysChanges["added"].append(
-                    {"system: " + system, "group: " + group})
-            if opp == "remove":
-                self.sysChanges["removed"].append(
-                    {"system: " + system, "group: " + group})
+        if group == self.sysGrpID:
+            if self.sysChanges is None:
+                self.sysChanges = {}
+                self.sysChanges["added"] = []
+                self.sysChanges["removed"] = []
+            # track changes
+            if self.sysChanges is not None:
+                if opp == "add":
+                    self.sysChanges["added"].append(system)
+                if opp == "remove":
+                    self.sysChanges["removed"].append(system)
+        elif group == self.sysGrpPostID:
+            if self.postSysChanges is None:
+                self.postSysChanges = {}
+                self.postSysChanges["added"] = []
+                self.postSysChanges["removed"] = []
+            # track changes
+            if self.postSysChanges is not None:
+                if opp == "add":
+                    self.postSysChanges["added"].append(system)
+                if opp == "remove":
+                    self.postSysChanges["removed"].append(system)
 
     def grp_tracker(self, group, opp):
         """
@@ -982,6 +992,9 @@ exit 0
         if self.sysChanges is not None:
             print("\nSystems added to/ removed from: " + self.sysGrpName)
             pprint.pprint(self.sysChanges, width=1)
+        if self.postSysChanges is not None:
+            print("\nSystems added to/ removed from: " + self.sysGrpName + "-Completed")
+            pprint.pprint(self.postSysChanges, width=1)
         if self.grpChanges is None and self.cmdChanges is None and self.sysChanges is None:
             print("\nNo changes made to JumpCloud")
         print("\n")
