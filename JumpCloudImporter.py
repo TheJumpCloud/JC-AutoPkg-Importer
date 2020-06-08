@@ -266,7 +266,17 @@ class JumpCloudImporter(Processor):
             self.API_KEY = self.env['JC_API']
         else:
             # Prompt user for API Key
-            key = getpass.getpass("JumpCloud API Key: ", stream=None)
+            key = ""
+            while len(key) is not 40:
+                key = getpass.getpass("JumpCloud API Key: ", stream=None)
+                try:
+                    if len(key) is not 40:
+                        print(
+                            "Invalid API Key, please enter a valid key. See JumpCloud Docs for more information:")
+                        print("https://docs.jumpcloud.com/2.0/authentication-and-authorization")
+                    # break
+                except ValueError:
+                    print("Invalid Selection, please enter a key org #")
             self.API_KEY = key
             # Set Environment Variable
             os.environ['JC_ENV_API_KEY'] = key
@@ -296,13 +306,24 @@ class JumpCloudImporter(Processor):
                     self.ORG_ID = orgsList.results[0].id
                 else:
                     index = 0
+                    orgListId = []
+                    selection = ""
+                    print("The following organizations can be modified with this API Key")
+                    print("# | Organization Name")
                     for i in orgsList.results:
                         print(str(index) + " | " + i.display_name)
+                        orgListId.append(index)
                         index += 1
-                    selection = input(
-                        "Select the org you would like to connect to: ")
-                    selection = int(selection)
-                    #TODO: check for logic while loop
+                    while selection not in orgListId:
+                        selection = input("Select the org # you would like to connect to: ")
+                        try:
+                            selection = int(selection)
+                            if selection not in orgListId:
+                                print(
+                                    "Invalid Selection, please enter a valid org #")
+                            # break
+                        except ValueError:
+                            print("Invalid Selection, please enter a valid org #")
                     os.environ['JC_ENV_ORG_ID'] = orgsList.results[selection].id
                     self.ORG_ID = orgsList.results[selection].id
             except ApiExceptionV1 as e:
@@ -592,7 +613,7 @@ class JumpCloudImporter(Processor):
         try:
             # Get a Command File
             api_response = JC_CMD.commands_list(
-                self.CONTENT_TYPE, self.ACCEPT, filter=filter)
+                self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, filter=filter)
             # result = api_response.get()
             # print("Get Python Testing")
             # print(api_response)
