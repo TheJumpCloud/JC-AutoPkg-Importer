@@ -17,7 +17,6 @@ from __future__ import print_function
 import sys
 import os
 import threading
-import time
 import jcapiv1
 import jcapiv2
 import getpass
@@ -582,19 +581,14 @@ class JumpCloudImporter(Processor):
         try:
             # Get a Command File
             api_response = JC_CMD.commands_list(
-                self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, filter=filter)
+                self.CONTENT_TYPE, self.ACCEPT, filter=filter)
             # result = api_response.get()
             # print("Get Python Testing")
-            if api_response.total_count == 0:
-                self.output("Found no results: wait 5 seconds, try again")
-                time.sleep(5)
-                api_response = JC_CMD.commands_list(
-                    self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, filter=filter)
             # print(api_response)
             if api_response.total_count > 1:
                 print("Too many commands with the same name")
             else:
-                # self.output("Command ID: " + api_response._results[0].id)
+                # print.output("Command ID:" + api_response._results[0].id)
                 self.cmdId = api_response._results[0].id
                 return api_response._results[0].id
 
@@ -624,12 +618,12 @@ class JumpCloudImporter(Processor):
         try:
             # Get a Command File
             api_response = JC_CMD.commands_post(
-                self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body, async_req=True)
+                self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
             # result = api_response.get()
             # print(dir(result))
             self.cmd_tracker(nameVar, "add")
             self.output("Command created: " + nameVar)
-            # print(result)
+            # print.output(api_response)
         except ApiExceptionV1 as err:
             print("Exception when calling CommandsApi->commands_post: %s\n" % err)
 
@@ -965,7 +959,7 @@ exit 0
             url = "https://s3-%s.amazonaws.com/%s/%s" % (
                 location, bucket, object_name)
             self.cmdUrl = url
-            # print("Object URL: " + url)
+            print("\nUploaded File at URL: " + url)
         except ClientError as e:
             logging.error(e)
             return False
