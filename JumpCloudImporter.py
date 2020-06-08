@@ -233,7 +233,6 @@ class JumpCloudImporter(Processor):
         self.cmdId = None
         self.cmdUrl = None
         self.autopkgType = None
-        self.changes = {}
         self.sysChanges = None
         self.postSysChanges = None
         self.grpChanges = None
@@ -312,6 +311,11 @@ class JumpCloudImporter(Processor):
 
     def sys_tracker(self, system, group, opp):
         """
+        This function tracks which systems have been added or removed
+        from system groups and stores the data in a dictionary.
+
+        This function tracks the data stored in the self.sysGrpID and the
+        self.sysGrpPostID system groups.
         """
         # define tracking dict
         if group == self.sysGrpID:
@@ -339,6 +343,7 @@ class JumpCloudImporter(Processor):
 
     def grp_tracker(self, group, opp):
         """
+        This function tracks which groups have been added
         """
         if self.grpChanges is None:
             self.grpChanges = {}
@@ -350,6 +355,7 @@ class JumpCloudImporter(Processor):
 
     def cmd_tracker(self, cmd, opp):
         """
+        This function tracks which groups have been added
         """
         if self.cmdChanges is None:
             self.cmdChanges = {}
@@ -358,10 +364,6 @@ class JumpCloudImporter(Processor):
         if self.cmdChanges is not None:
             if opp == "add":
                 self.cmdChanges["added"].append(cmd)
-
-    def version_tracker(self, system, app, installedVersion):
-        """
-        """
 
     def get_si_systems(self):
         """This function compares the systems inventory with the v1 api, saves those
@@ -505,7 +507,6 @@ class JumpCloudImporter(Processor):
                 composite.append(i.id)
             if system not in composite:
                 self.output("Adding: " + system + " to: " + group)
-                # self.changes[system] = group
                 self.sys_tracker(system, group, "add")
                 JC_SYS_GROUP.graph_system_group_members_post(
                     group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
@@ -984,20 +985,20 @@ exit 0
         # print("=================================================")
         print("================ Results Summary ================")
         if self.grpChanges is not None:
-            print("\nGroups added:")
+            print("Groups added:")
             pprint.pprint(self.grpChanges, width=1)
         if self.cmdChanges is not None:
-            print("\nCommands Created:")
+            print("Commands Created:")
             pprint.pprint(self.cmdChanges, width=1)
         if self.sysChanges is not None:
-            print("\nSystems added to/ removed from: " + self.sysGrpName)
+            print("Systems added to/ removed from: " + self.sysGrpName)
             pprint.pprint(self.sysChanges, width=1)
         if self.postSysChanges is not None:
-            print("\nSystems added to/ removed from: " + self.sysGrpName + "-Completed")
+            print("Systems added to/ removed from: " + self.sysGrpName + "-Completed")
             pprint.pprint(self.postSysChanges, width=1)
-        if self.grpChanges is None and self.cmdChanges is None and self.sysChanges is None:
-            print("\nNo changes made to JumpCloud")
-        print("\n")
+        if self.grpChanges is None and self.cmdChanges is None and self.sysChanges is None and self.postSysChanges is None:
+            print("No changes made to JumpCloud")
+        # print("\n")
 
     def main(self):
         try:
