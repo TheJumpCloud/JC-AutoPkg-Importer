@@ -31,7 +31,13 @@
                 <key>JC_SYSGROUP</key>
                 <string>AutoPkg-%NAME%-%version%</string>
 				<key>JC_TYPE</key>
-				<string>update</string>
+				<string>auto</string>
+				<key>JC_TRIGGER</key>
+				<true/>
+				<key>JC_REPEAT_TYPE</key>
+				<string>minute</string>
+				<key>JC_REPEAT_CRON</key>
+				<string>0 */5 * * * *</string>
             </dict>
         </dict>
     </array>
