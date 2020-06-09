@@ -29,7 +29,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 __all__ = ["JumpCloudImporter"]
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 
 # Progress Reporter for AWS Object Uploads
