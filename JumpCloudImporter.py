@@ -746,7 +746,7 @@ signature=$(printf "$signstr" | openssl dgst -sha256 -sign /opt/jc/client.key | 
 
 curl -s \\
 	-X 'POST' \\
-	-A "${{USER_AGENT}}" \\
+	-A "${{userAgent}}" \\
 	-H 'Content-Type: application/json' \\
 	-H 'Accept: application/json' \\
 	-H "Date: ${{now}}" \\
