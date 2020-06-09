@@ -700,6 +700,7 @@ installer -pkg "/tmp/{0}" -target /
 
 systemGroupID="{2}"
 systemGroupPostID="{3}"
+userAgent="{4}"
 
 # Parse the systemKey from the conf file.
 conf="$(cat /opt/jc/jcagent.conf)"
@@ -745,6 +746,7 @@ signature=$(printf "$signstr" | openssl dgst -sha256 -sign /opt/jc/client.key | 
 
 curl -s \\
 	-X 'POST' \\
+	-A "${{USER_AGENT}}" \\
 	-H 'Content-Type: application/json' \\
 	-H 'Accept: application/json' \\
 	-H "Date: ${{now}}" \\
@@ -755,8 +757,9 @@ curl -s \\
 echo "JumpCloud system: ${{systemID}} added to post install system group: ${{systemGroupPostID}}"
 exit 0
 ''')
+        userAgent = "JumpCloud_" + "autopkg-importer/" + __version__
         query = query.format(
-            object_name, url, self.sysGrpID, self.sysGrpPostID)
+            object_name, url, self.sysGrpID, self.sysGrpPostID, userAgent)
         usr = self.env["JC_USER"]
         # files uploaded in list[str] format where str is an ID of a JumpCloud
         # file variable for selecting the AutoPkg package path
