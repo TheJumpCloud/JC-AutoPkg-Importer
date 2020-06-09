@@ -342,25 +342,25 @@ class JumpCloudImporter(Processor):
         if group == self.sysGrpID:
             if self.sysChanges is None:
                 self.sysChanges = {}
-                self.sysChanges["added"] = []
-                self.sysChanges["removed"] = []
+                self.sysChanges["Added"] = []
+                self.sysChanges["Removed"] = []
             # track changes
             if self.sysChanges is not None:
                 if opp == "add":
-                    self.sysChanges["added"].append(system)
+                    self.sysChanges["Added"].append(system)
                 if opp == "remove":
-                    self.sysChanges["removed"].append(system)
+                    self.sysChanges["Removed"].append(system)
         elif group == self.sysGrpPostID:
             if self.postSysChanges is None:
                 self.postSysChanges = {}
-                self.postSysChanges["added"] = []
-                self.postSysChanges["removed"] = []
+                self.postSysChanges["Added"] = []
+                self.postSysChanges["Removed"] = []
             # track changes
             if self.postSysChanges is not None:
                 if opp == "add":
-                    self.postSysChanges["added"].append(system)
+                    self.postSysChanges["Added"].append(system)
                 if opp == "remove":
-                    self.postSysChanges["removed"].append(system)
+                    self.postSysChanges["Removed"].append(system)
 
     def grp_tracker(self, group, opp):
         """
@@ -368,11 +368,11 @@ class JumpCloudImporter(Processor):
         """
         if self.grpChanges is None:
             self.grpChanges = {}
-            self.grpChanges["added"] = []
+            self.grpChanges["Added"] = []
 
         if self.grpChanges is not None:
             if opp == "add":
-                self.grpChanges["added"].append(group)
+                self.grpChanges["Added"].append(group)
 
     def cmd_tracker(self, cmd, opp):
         """
@@ -380,11 +380,11 @@ class JumpCloudImporter(Processor):
         """
         if self.cmdChanges is None:
             self.cmdChanges = {}
-            self.cmdChanges["added"] = []
+            self.cmdChanges["Added"] = []
 
         if self.cmdChanges is not None:
             if opp == "add":
-                self.cmdChanges["added"].append(cmd)
+                self.cmdChanges["Added"].append(cmd)
 
     def get_si_systems(self):
         """This function compares the systems inventory with the v1 api, saves those
