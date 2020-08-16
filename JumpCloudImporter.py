@@ -588,19 +588,18 @@ class JumpCloudImporter(Processor):
         to be created
         """
         JC_CMD = jcapiv1.CommandsApi(jcapiv1.ApiClient(self.CONFIGURATIONv1))
-        filter = "name:eq:%s" % name
         try:
             # Get a Command File
             api_response = JC_CMD.commands_list(
-                self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, filter=filter)
-            # print(api_response)
-            if api_response.total_count == 0:
-                self.output("Command does not exist, creating command")
-                return True
-            else:
-                self.output("Command: " + name + " already exists")
-                return False
-
+                self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID)
+            # get search results
+            for i in api_response.results:
+                if name in i.name:
+                    print("Command: " + name + " already exists")
+                    return False
+            # return true if an exact command name match does not exist.
+            print("Command does not exist, creating command: " + name)
+            return True
         except ApiExceptionV1 as err:
             print("Exception when calling CommandsApi->commands_post: %s\n" % err)
 
@@ -609,20 +608,25 @@ class JumpCloudImporter(Processor):
         name in the JumpCloud console
         """
         JC_CMD = jcapiv1.CommandsApi(jcapiv1.ApiClient(self.CONFIGURATIONv1))
-        filter = "name:eq:%s" % name
+        count = 0
+        match = ""
         try:
             # Get a Command File
             api_response = JC_CMD.commands_list(
-                self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, filter=filter)
-            # result = api_response.get()
-            # print("Get Python Testing")
-            # print(api_response)
-            if api_response.total_count > 1:
+                self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID)
+            # get search results
+            for i in api_response.results:
+                if name in i.name:
+                    match = i.id
+                    count += 1
+                if count > 1:
+                    break
+
+            if count > 1:
                 print("Too many commands with the same name")
             else:
-                # print.output("Command ID:" + api_response._results[0].id)
-                self.cmdId = api_response._results[0].id
-                return api_response._results[0].id
+                self.cmdId = match
+                return match
 
         except ApiExceptionV1 as err:
             print("Exception when calling CommandsApi->commands_post: %s\n" % err)
