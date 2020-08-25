@@ -21,6 +21,7 @@ import jcapiv1
 import jcapiv2
 import getpass
 import pprint
+from urllib.parse import quote
 from jcapiv2.rest import ApiException
 from jcapiv1.rest import ApiException as ApiExceptionV1
 from autopkglib import Processor, ProcessorError
@@ -990,7 +991,9 @@ exit 0
             location = boto3.client('s3').get_bucket_location(
                 Bucket=bucket)['LocationConstraint']
             url = "https://s3-%s.amazonaws.com/%s/%s" % (
-                location, bucket, object_name)
+                location, bucket, quote(object_name))
+            # Encode URL to account for spaces and special characters
+            # encodedURL = quote(url)
             self.commandUrl = url
             print("\nUploaded File at URL: " + url)
         except ClientError as e:
