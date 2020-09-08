@@ -571,7 +571,7 @@ class JumpCloudImporter(Processor):
         # Set Command Name
         self.commandName = "%s" % "AutoPkg-" + \
             self.env['NAME'] + "-" + self.env.get("version")
-        print(self.commandName)
+        self.output("Command Name set to: " + self.commandName)
 
     def check_command(self, name):
         """Check if command exists by comparing AutoPkg names
@@ -765,7 +765,6 @@ exit 0
         usr = self.env["JC_USER"]
         # files uploaded in list[str] format where str is an ID of a JumpCloud
         # file variable for selecting the AutoPkg package path
-        #TODO: switch to self.commandName
         commandName = self.commandName
         if self.env["JC_TRIGGER"] == True:
             commandLaunch = "repeated"
