@@ -21,6 +21,7 @@ import jcapiv1
 import jcapiv2
 import getpass
 import pprint
+from urllib.parse import quote
 from jcapiv2.rest import ApiException
 from jcapiv1.rest import ApiException as ApiExceptionV1
 from autopkglib import Processor, ProcessorError
@@ -29,7 +30,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 __all__ = ["JumpCloudImporter"]
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 
 # Progress Reporter for AWS Object Uploads
@@ -70,10 +71,10 @@ class JumpCloudImporter(Processor):
     added to that group. Admins can manually specify other groups or systems.
 
     AUTO:
-    Auto deployment runs will create the JumpCloud command and a System Group using
-    System Insights. JumpCloud systems are queried using system insights, systems
-    that do not have the AutoPkg software title or have the software title with a
-    previous version are added to this system group.
+    Auto deployment runs will create the JumpCloud command and a System Group
+    using System Insights. JumpCloud systems are queried using system insights,
+    systems that do not have the AutoPkg software title or have the software
+    title with a previous version are added to this system group.
 
     System added to Group when:
     Does not have software title
@@ -110,36 +111,37 @@ class JumpCloudImporter(Processor):
         "JC_API": {
             "required": False,
             "description":
-                "Password of api user, optionally set as a key in "
+                "Password of api user, optionally set as a key in"
                 "the com.github.autopkg preference file.",
             "default": "",
         },
         "JC_ORG": {
             "required": False,
             "description":
-                "ORG ID, optionally set as a key in "
+                "ORG ID, optionally set as a key in"
                 "the com.github.autopkg preference file.",
             "default": "",
         },
         "JC_SYSGROUP": {
             "required": False,
             "description":
-                "If provided in recipe, the processor will build a smart "
-                "group and assign systems without that application and version to the new group",
+                "If provided in recipe, the processor will build a smart"
+                "group and assign systems without that application and version"
+                "to the new group",
             "default": "default"
         },
         "pkg_path": {
             "required": False,
             "description":
-                "Path to a pkg or dmg to import - provided by "
-                "previous pkg recipe/processor.",
+                "Path to a pkg or dmg to import - provided by"
+                "pkg recipe/processor.",
             "default": "",
         },
         "version": {
             "required": False,
             "description":
-                "Version number of software to import - usually provided "
-                "by previous pkg recipe/processor, but if not, defaults to "
+                "Version number of software to import - usually provided"
+                "by pkg recipe/processor, but if not, defaults to"
                 "'0.0.0.0'. ",
             "default": "0.0.0.0",
         },
@@ -169,8 +171,8 @@ class JumpCloudImporter(Processor):
             "required": True,
             "description":
                 "dist point for uploading compiled packages"
-                "If dist = AWS this will upload to an AWS Bucket and use the functions"
-                "to do just that",
+                "If dist = AWS this will upload to an AWS Bucket and use the"
+                "functions to do just that",
             "default": "AWS"
         },
         "AWS_BUCKET": {
@@ -222,23 +224,23 @@ class JumpCloudImporter(Processor):
         super(JumpCloudImporter, self).__init__(env, infile, outfile)
         self.groups = None
         self.pkg_path = None
-        self.globalCmdName = None
-        self.version = None
-        self.appName = None
-        self.missingUpdate = []
-        self.sysGrpName = None
-        self.sysGrpID = None
-        self.sysGrpPostID = None
-        self.cmdName = None
-        self.cmdId = None
-        self.cmdUrl = None
-        self.autopkgType = None
-        self.sysChanges = None
-        self.postSysChanges = None
-        self.grpChanges = None
-        self.cmdChanges = None
-        self.API_KEY = None
-        self.ORG_ID = None
+        self.version = None                 # Version of the current autopkg recipe app
+        self.appName = None                 # Name of the current autopkg recipe app
+        self.missingUpdate = []             # List of systems missing latest version
+        self.systemGroupName = None         # Name of installer system group
+        self.systemPostGroupName = None     # Name of the post-installer system group
+        self.systemGroupID = None           # ID of installer system group
+        self.systemGroupPostID = None       # ID of post-installer system group
+        self.commandName = None             # Name of command
+        self.commandId = None               # ID of installer command
+        self.commandUrl = None              # URL of S3 generated .pkg file
+        self.autopkgType = None             # Type of AutoPkg runs
+        self.systemChanges = None           # Track system in installer group
+        self.postSystemChanges = None       # Track systems in post-installer group
+        self.groupChanges = None            # To track group additions/ changes
+        self.commandChanges = None          # To track command changes
+        self.API_KEY = None                 # JumpCloud API KEY
+        self.ORG_ID = None                  # JumpCloud ORG ID
         self.CONTENT_TYPE = "application/json"
         self.ACCEPT = "application/json"
         self.CONFIGURATIONv2 = jcapiv2.Configuration()
@@ -248,11 +250,12 @@ class JumpCloudImporter(Processor):
         """the connect_jc_online function is used once to set up the configuration
         of the API key to the jcapi version 1 and 2
 
-        If the JC_API key is stored in ~/Library/Preferences/com.github.autopkg.plist
-        this processor will use that key value to connect to JumpCloud.
+        If the JC_API key is stored in:
+        ~/Library/Preferences/com.github.autopkg.plist, this processor will
+        use that key value to connect to JumpCloud.
 
-        If the JC_API key value is not stored locally, the terminal user is prompted
-        to enter their API key during the recipe run.
+        If the JC_API key value is not stored locally, the terminal user is
+        prompted to enter their API key during the recipe run.
         """
         # Check for API Key in os.enviorn
         # elif Check for API Key in environment vars from input
@@ -267,10 +270,10 @@ class JumpCloudImporter(Processor):
         else:
             # Prompt user for API Key
             key = ""
-            while len(key) is not 40:
+            while len(key) != 40:
                 key = getpass.getpass("JumpCloud API Key: ", stream=None)
                 try:
-                    if len(key) is not 40:
+                    if len(key) != 40:
                         print(
                             "Invalid API Key, please enter a valid key. See JumpCloud Docs for more information:")
                         print("https://docs.jumpcloud.com/2.0/authentication-and-authorization")
@@ -330,68 +333,68 @@ class JumpCloudImporter(Processor):
                 print(
                     "Exception when calling OrganizationsApi->organization_list: %s\n" % e)
 
-    def sys_tracker(self, system, group, opp):
+    def system_tracker(self, system, group, opp):
         """
         This function tracks which systems have been added or removed
         from system groups and stores the data in a dictionary.
 
-        This function tracks the data stored in the self.sysGrpID and the
-        self.sysGrpPostID system groups.
+        This function tracks the data stored in the self.systemGroupID and the
+        self.systemGroupPostID system groups.
         """
         # define tracking dict
-        if group == self.sysGrpID:
-            if self.sysChanges is None:
-                self.sysChanges = {}
-                self.sysChanges["Added"] = []
-                self.sysChanges["Removed"] = []
+        if group == self.systemGroupID:
+            if self.systemChanges is None:
+                self.systemChanges = {}
+                self.systemChanges["Added"] = []
+                self.systemChanges["Removed"] = []
             # track changes
-            if self.sysChanges is not None:
+            if self.systemChanges is not None:
                 if opp == "add":
-                    self.sysChanges["Added"].append(system)
+                    self.systemChanges["Added"].append(system)
                 if opp == "remove":
-                    self.sysChanges["Removed"].append(system)
-        elif group == self.sysGrpPostID:
-            if self.postSysChanges is None:
-                self.postSysChanges = {}
-                self.postSysChanges["Added"] = []
-                self.postSysChanges["Removed"] = []
+                    self.systemChanges["Removed"].append(system)
+        elif group == self.systemGroupPostID:
+            if self.postSystemChanges is None:
+                self.postSystemChanges = {}
+                self.postSystemChanges["Added"] = []
+                self.postSystemChanges["Removed"] = []
             # track changes
-            if self.postSysChanges is not None:
+            if self.postSystemChanges is not None:
                 if opp == "add":
-                    self.postSysChanges["Added"].append(system)
+                    self.postSystemChanges["Added"].append(system)
                 if opp == "remove":
-                    self.postSysChanges["Removed"].append(system)
+                    self.postSystemChanges["Removed"].append(system)
 
-    def grp_tracker(self, group, opp):
+    def group_tracker(self, group, opp):
         """
         This function tracks which groups have been added
         """
-        if self.grpChanges is None:
-            self.grpChanges = {}
-            self.grpChanges["Added"] = []
+        if self.groupChanges is None:
+            self.groupChanges = {}
+            self.groupChanges["Added"] = []
 
-        if self.grpChanges is not None:
+        if self.groupChanges is not None:
             if opp == "add":
-                self.grpChanges["Added"].append(group)
+                self.groupChanges["Added"].append(group)
 
-    def cmd_tracker(self, cmd, opp):
+    def command_tracker(self, command, opp):
         """
         This function tracks which groups have been added
         """
-        if self.cmdChanges is None:
-            self.cmdChanges = {}
-            self.cmdChanges["Added"] = []
+        if self.commandChanges is None:
+            self.commandChanges = {}
+            self.commandChanges["Added"] = []
 
-        if self.cmdChanges is not None:
+        if self.commandChanges is not None:
             if opp == "add":
-                self.cmdChanges["Added"].append(cmd)
+                self.commandChanges["Added"].append(command)
 
-    def get_si_systems(self):
+    def get_system_insights_systems(self):
         """This function compares the systems inventory with the v1 api, saves those
         systems to a list called inventory.
 
-        Systems with system insights are then queried, if a system insights inventory
-        system is an Apple device and in the computer inventory it's returned
+        Systems with system insights enabled are then queried, if a system insights
+        inventory system is an Apple device and in the computer inventory it's returned
         """
         # system inventory
         # inventory = []
@@ -422,19 +425,19 @@ class JumpCloudImporter(Processor):
         JC_SYS_GROUP = jcapiv2.SystemGroupMembersMembershipApi(
             jcapiv2.ApiClient(self.CONFIGURATIONv2))
         try:
-            getstuff = JC_SYS_GROUP.graph_system_group_membership(
-                self.sysGrpPostID, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID)
-            for i in getstuff:
+            systemGroupMember = JC_SYS_GROUP.graph_system_group_membership(
+                self.systemGroupPostID, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID)
+            for i in systemGroupMember:
                 # self.output(i.id)
                 while i.id in allSystems:
                     allSystems.remove(i.id)
-                self.remove_system_from_group(i.id, self.sysGrpID)
+                self.remove_system_from_group(i.id, self.systemGroupID)
         except ApiException as err:
             print(
                 "Exception when calling SystemGroupMembersApi->graph_system_group_members_post:" % err)
         return allSystems
 
-    def get_si_apps_id(self, sysID, app):
+    def get_system_insights_apps_id(self, sysID, app):
         """This function gathers information about each system insights
         system, using AutoPkg as an input source this function queries
         systems based on the app recipe name.
@@ -483,9 +486,9 @@ class JumpCloudImporter(Processor):
                 self.output(app + " not found on system: " + sysID)
                 # print(self.env.get("JC_SYSGROUP"))
                 if self.env["JC_TYPE"] == "auto":
-                    self.add_system_to_group(sysID, self.sysGrpID)
+                    self.add_system_to_group(sysID, self.systemGroupID)
                 elif self.env["JC_TYPE"] == "update":
-                    self.remove_system_from_group(sysID, self.sysGrpID)
+                    self.remove_system_from_group(sysID, self.systemGroupID)
         except ApiException as err:
             print(
                 "Exception when calling SystemInsightsApi->systeminsights_list_apps: %s\n" % err)
@@ -505,13 +508,12 @@ class JumpCloudImporter(Processor):
             if (i["app_version"] != self.env.get("version") or self.env.get("version") == "0.0.0.0"):
                 self.output("System: " + i["system"] + " " + i["application"] + " requires updating")
                 self.output("Installed Version: " + i["app_version"] + " | Should Be: " + self.env.get("version"))
-                self.add_system_to_group(i["system"], self.sysGrpID)
-                # self.add_system_to_group(i["system"], self.env["SYS_GROUP"])
+                self.add_system_to_group(i["system"], self.systemGroupID)
             if (i["app_version"] == self.env.get("version")):
                 self.output("System: " + i["system"] + " " + i["application"] + " does not require updating")
                 self.output("Installed Version: " + i["app_version"] + " | Matches Version : " + self.env.get("version"))
-                self.remove_system_from_group(i["system"], self.sysGrpID)
-                self.add_system_to_group(i["system"], self.sysGrpPostID)
+                self.remove_system_from_group(i["system"], self.systemGroupID)
+                self.add_system_to_group(i["system"], self.systemGroupPostID)
 
     def add_system_to_group(self, system, group):
         """Adds system to a group"""
@@ -522,13 +524,13 @@ class JumpCloudImporter(Processor):
         body = jcapiv2.SystemGroupMembersReq(
             id=system, op="add", type="system")
         try:
-            getstuff = JC_SYS_GROUP.graph_system_group_membership(
+            systemGroupMember = JC_SYS_GROUP.graph_system_group_membership(
                 group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID)
-            for i in getstuff:
+            for i in systemGroupMember:
                 composite.append(i.id)
             if system not in composite:
                 self.output("Adding: " + system + " to: " + group)
-                self.sys_tracker(system, group, "add")
+                self.system_tracker(system, group, "add")
                 JC_SYS_GROUP.graph_system_group_members_post(
                     group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
             else:
@@ -546,13 +548,13 @@ class JumpCloudImporter(Processor):
         body = jcapiv2.SystemGroupMembersReq(
             id=system, op="remove", type="system")
         try:
-            getstuff = JC_SYS_GROUP.graph_system_group_membership(
+            systemGroupMember = JC_SYS_GROUP.graph_system_group_membership(
                 group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID)
-            for i in getstuff:
+            for i in systemGroupMember:
                 composite.append(i.id)
             if system in composite:
                 self.output("Removing: " + system + " from: " + group)
-                self.sys_tracker(system, group, "remove")
+                self.system_tracker(system, group, "remove")
                 JC_SYS_GROUP.graph_system_group_members_post(
                     group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
             else:
@@ -563,17 +565,13 @@ class JumpCloudImporter(Processor):
 
     def set_global_vars(self):
         """
-        This command defines the global variables which are used by the processor to create and build
-        commands and system groups.
-
-        Currently additional checks are needed:
-        TODO:
-        * Group Name (sysGrpName)
+        This command defines the global variables which are used by the
+        processor to create and build commands and system groups.
         """
-        self.env["globalCmdName"] = "%s" % "AutoPkg-" + \
+        # Set Command Name
+        self.commandName = "%s" % "AutoPkg-" + \
             self.env['NAME'] + "-" + self.env.get("version")
-        self.cmdName = "%s" % "AutoPkg-" + \
-            self.env['NAME'] + "-" + self.env.get("version")
+        self.output("Command Name set to: " + self.commandName)
 
     def check_command(self, name):
         """Check if command exists by comparing AutoPkg names
@@ -625,17 +623,17 @@ class JumpCloudImporter(Processor):
             if count > 1:
                 print("Too many commands with the same name")
             else:
-                self.cmdId = match
+                self.commandId = match
                 return match
 
         except ApiExceptionV1 as err:
             print("Exception when calling CommandsApi->commands_post: %s\n" % err)
 
-    def set_command(self, nameVar):
+    def set_command(self, commandName):
         """Create a JumpCloud command to be edited by the edit_command
         function.
 
-        This function sets the name of the command to nameVar
+        This function sets the name of the command to commandName
         """
         JC_CMD = jcapiv1.CommandsApi(jcapiv1.ApiClient(self.CONFIGURATIONv1))
         # line indentations are deliberate to account for bash
@@ -645,7 +643,7 @@ class JumpCloudImporter(Processor):
 ''')
         usr = self.env["JC_USER"]
         body = jcapiv1.Command(
-            name="%s" % nameVar,
+            name="%s" % commandName,
             command="%s" % query,
             command_type="mac",
             user="%s" % usr,
@@ -657,8 +655,8 @@ class JumpCloudImporter(Processor):
                 self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
             # result = api_response.get()
             # print(dir(result))
-            self.cmd_tracker(nameVar, "add")
-            self.output("Command created: " + nameVar)
+            self.command_tracker(commandName, "add")
+            self.output("Command created: " + commandName)
             # print.output(api_response)
         except ApiExceptionV1 as err:
             print("Exception when calling CommandsApi->commands_post: %s\n" % err)
@@ -673,7 +671,7 @@ class JumpCloudImporter(Processor):
         the url of the AWS object into the command
         """
         # trim the filename
-        # print(file_name + "  " + self.sysGrpID + "  " + id)
+        # print(file_name + "  " + self.systemGroupID + "  " + id)
         object_name = os.path.basename(file_name)
         JC_CMD = jcapiv1.CommandsApi(jcapiv1.ApiClient(self.CONFIGURATIONv1))
         # line indentations are deliberate to account for bash
@@ -763,32 +761,31 @@ exit 0
 ''')
         userAgent = "JumpCloud_" + "autopkg-importer/" + __version__
         query = query.format(
-            object_name, url, self.sysGrpID, self.sysGrpPostID, userAgent)
+            object_name, url, self.systemGroupID, self.systemGroupPostID, userAgent)
         usr = self.env["JC_USER"]
         # files uploaded in list[str] format where str is an ID of a JumpCloud
         # file variable for selecting the AutoPkg package path
-        #TODO: switch to self.cmdName
-        cmdName = self.env["globalCmdName"]
+        commandName = self.commandName
         if self.env["JC_TRIGGER"] == True:
-            cmdLaunch = "repeated"
-            cmdRepeat = self.env["JC_REPEAT_TYPE"]
-            cmdCron = self.env["JC_REPEAT_CRON"]
+            commandLaunch = "repeated"
+            commandRepeat = self.env["JC_REPEAT_TYPE"]
+            commandCron = self.env["JC_REPEAT_CRON"]
 
         # use when uploading to a distribution point
         if self.env['JC_TRIGGER'] == True:
             body = jcapiv1.Command(
-                name="%s" % cmdName,
+                name="%s" % commandName,
                 command="%s" % query,
                 command_type="mac",
-                launch_type="%s" % cmdLaunch,
-                schedule_repeat_type="%s" % cmdRepeat,
-                schedule="%s" % cmdCron,
+                launch_type="%s" % commandLaunch,
+                schedule_repeat_type="%s" % commandRepeat,
+                schedule="%s" % commandCron,
                 user="%s" % usr,
                 timeout="900",
             )
         else:
             body = jcapiv1.Command(
-                name="%s" % cmdName,
+                name="%s" % commandName,
                 command="%s" % query,
                 command_type="mac",
                 user="%s" % usr,
@@ -807,8 +804,6 @@ exit 0
         ASSOC_CMD = jcapiv2.SystemGroupAssociationsApi(
             jcapiv2.ApiClient(self.CONFIGURATIONv2))
         self.output("Associating command: " + command_id + " to system group: " + group_id)
-        # group_id = '5dc1a63645886d6c72b87116'
-        # cdm_id = self.get_command_id(self.env["globalCmdName"])
         body = jcapiv2.SystemGroupGraphManagementReq(
             id=command_id, op="add", type="command")
         try:
@@ -841,7 +836,6 @@ exit 0
                           api_response[i]._to.id + " association found at index " + str(i))
                     return True
                 i += 1
-            # TODO: just call associate_command_with_group_list if this is false
             return False
         except ApiException as e:
             print("Exception when calling SystemGroupAssociationsApi->graph_system_group_associations_list: %s\n" % e)
@@ -851,16 +845,15 @@ exit 0
         try:
             if inputGroup == "default":
                 self.output("no group specified, defaulting to default naming structure")
-                self.sysGrpName = str(
+                self.systemGroupName = str(
                     self.env['NAME'] + "-AutoPkg-" + self.env.get("version"))
-                self.output(self.sysGrpName)
-                return self.sysGrpName
+                self.output(self.systemGroupName)
+                return self.systemGroupName
             else:
-
                 # print("Listing: " + self.env([JC_SYSGROUP]))
-                # self.sysGrpName = self.env.get("JC_SYSGROUP")
-                self.sysGrpName = inputGroup
-                return self.sysGrpName
+                # self.systemGroupName = self.env.get("JC_SYSGROUP")
+                self.systemGroupName = inputGroup
+                return self.systemGroupName
         except NameError:
             print("this is not a valid group")
 
@@ -874,21 +867,20 @@ exit 0
                 self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, filter=search)
 
             postGroup = inputGroup + "-Complete"
-            # print("THE POST INSTALL GROUP ID IS: " + postGroup)
             searchPost = ['name:eq:%s' % postGroup]
             listPostGroup = JC_GROUPS.groups_system_list(
                 self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, filter=searchPost)
 
             for k in listPostGroup:
                 if (k.name == postGroup):
-                    self.sysGrpPostID = k.id
-                    self.output("THE POST INSTALL GROUP ID IS: " + self.sysGrpPostID)
+                    self.systemGroupPostID = k.id
+                    self.output("THE POST INSTALL GROUP ID IS: " + self.systemGroupPostID)
 
             for i in listGroup:
                 if (i.name == inputGroup):
-                    self.sysGrpID = i.id
-                    self.output("THE GROUP ID IS: " + self.sysGrpID)
-                    self.output("THE GROUP NAME IS: " + self.sysGrpName)
+                    self.systemGroupID = i.id
+                    self.output("THE GROUP ID IS: " + self.systemGroupID)
+                    self.output("THE GROUP NAME IS: " + self.systemGroupName)
                     return True
                 else:
                     return False
@@ -907,73 +899,16 @@ exit 0
             body = jcapiv2.SystemGroupData(inputGroup)
             newGroup = JC_GROUPS.groups_system_post(
                 self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
-            self.grp_tracker(inputGroup, "add")
+            self.group_tracker(inputGroup, "add")
 
             # Set the Post-Install Group
             postBody = jcapiv2.SystemGroupData(inputGroup + "-Complete")
             newPostGroup = JC_GROUPS.groups_system_post(
                 self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=postBody)
-            self.grp_tracker(inputGroup + "-Complete", "add")
+            self.group_tracker(inputGroup + "-Complete", "add")
 
         except ApiException as err:
             print("Exception when calling SystemGroupsApi->SystemGroupData: %s\n" % err)
-
-    def check_pkg(self):
-        """Check the status of the package. This function is used to verify
-        that the package path is not null.
-
-        it currently validates that the JC_DIST variable is not null but this
-        needs work before it's actually useful.
-        """
-        pkg_path = self.env["pkg_path"]
-        if pkg_path is "":
-            pkg_path = self.env["pathname"]
-        jc_dist = self.env["JC_DIST"]
-        if pkg_path is not "" and jc_dist is not None:
-            # Determine whether the recipe is a .pkg or .dmg
-            self.output(pkg_path + " package exists")
-            object_name = os.path.basename(pkg_path)
-            filename, file_extension = os.path.splitext(pkg_path)
-            self.output("Filename is: " + filename)
-            self.output("File Extension is: " + file_extension)
-            if file_extension == ".pkg":
-                autopkgType = "pkg"
-            elif file_extension == ".dmg":
-                autopkgType = "dmg"
-            return True
-        else:
-            return False
-        # return true or false
-
-    def debug_upload_file(self, file_name, bucket, object_name=None):
-        """Formatting and copying file
-
-        :param file_name: File to upload
-        :param bucket: Bucket to upload to
-        :param object_name: S3 object name. If not specified then file_name
-        is used
-        :return: True if file was uploaded, else False
-
-        Unless modified, the object_name will exist in the root directory
-        of the bucket.
-        """
-        # using os.path.basename, get the package
-        # file_name is to locate the package
-        # object_name is the bucket object item
-        object_name = os.path.basename(file_name)
-        if object_name is None:
-            object_name = file_name
-
-        # fake upload the file
-        self.output("filename is: " + file_name)
-        self.output("object name is: " + object_name)
-        self.output("object location is: " + os.path.basename(file_name))
-        jc_dist = self.env["JC_DIST"]
-        if file_name is not None and jc_dist is not None:
-            self.output(file_name + " package exists")
-            self.output(jc_dist + " is real")
-            self.output(file_name + " " + self.cmdId)
-            self.edit_command(file_name, "debug_package", self.cmdId)
 
     def upload_file(self, file_name, bucket, object_name=None):
         """Upload a file to an S3 bucket
@@ -996,8 +931,8 @@ exit 0
             location = boto3.client('s3').get_bucket_location(
                 Bucket=bucket)['LocationConstraint']
             url = "https://s3-%s.amazonaws.com/%s/%s" % (
-                location, bucket, object_name)
-            self.cmdUrl = url
+                location, bucket, quote(object_name))
+            self.commandUrl = url
             print("\nUploaded File at URL: " + url)
         except ClientError as e:
             logging.error(e)
@@ -1012,19 +947,19 @@ exit 0
         """
         # print("=================================================")
         print("================ Results Summary ================")
-        if self.grpChanges is not None:
+        if self.groupChanges is not None:
             print("Groups added:")
-            pprint.pprint(self.grpChanges, width=1)
-        if self.cmdChanges is not None:
+            pprint.pprint(self.groupChanges, width=1)
+        if self.commandChanges is not None:
             print("Commands Created:")
-            pprint.pprint(self.cmdChanges, width=1)
-        if self.sysChanges is not None:
-            print("Systems added to/ removed from: " + self.sysGrpName)
-            pprint.pprint(self.sysChanges, width=1)
-        if self.postSysChanges is not None:
-            print("Systems added to/ removed from: " + self.sysGrpName + "-Completed")
-            pprint.pprint(self.postSysChanges, width=1)
-        if self.grpChanges is None and self.cmdChanges is None and self.sysChanges is None and self.postSysChanges is None:
+            pprint.pprint(self.commandChanges, width=1)
+        if self.systemChanges is not None:
+            print("Systems added to/ removed from: " + self.systemGroupName)
+            pprint.pprint(self.systemChanges, width=1)
+        if self.postSystemChanges is not None:
+            print("Systems added to/ removed from: " + self.systemGroupName + "-Completed")
+            pprint.pprint(self.postSystemChanges, width=1)
+        if self.groupChanges is None and self.commandChanges is None and self.systemChanges is None and self.postSystemChanges is None:
             print("No changes made to JumpCloud")
         # print("\n")
 
@@ -1046,19 +981,19 @@ exit 0
 
             # Check if group defined above exists
             if self.env["JC_TYPE"] != "manual":
-                if self.get_group(self.sysGrpName):
+                if self.get_group(self.systemGroupName):
                     self.output("System group exists, no need to create new group")
                 else:
                     self.output("System group does not exist, creating group:")
-                    self.set_group(self.sysGrpName)
+                    self.set_group(self.systemGroupName)
                     # verify the group was created and get the new ID
-                    self.get_group(self.sysGrpName)
+                    self.get_group(self.systemGroupName)
 
             if self.env["JC_TYPE"] == "auto" or self.env["JC_TYPE"] == "update":
                 # QUERY SYSTEMS
                 self.output("============== BEGIN SYSTEM QUERY ===============")
-                for i in self.get_si_systems():
-                    self.get_si_apps_id(i, self.env['NAME'])
+                for i in self.get_system_insights_systems():
+                    self.get_system_insights_apps_id(i, self.env['NAME'])
                 self.output("=============== END SYSTEM QUERY ================")
                 self.output("=================================================")
 
@@ -1071,22 +1006,15 @@ exit 0
 
             # Set naming conventions for command and package name
             self.set_global_vars()
-            # Check if the package path exists
-
-            # Debugging Step Commented Out
-            # if self.check_pkg():
-            #     self.output("true condition")
-            # else:
-            #     self.output("fail condition")
 
             self.output("============== BEGIN COMMAND CHECK ==============")
             if self.env["JC_DIST"] == "AWS":
                 # if command does not exist do the following
-                if self.check_command(self.cmdName):
+                if self.check_command(self.commandName):
                     # create command for the first time
-                    self.set_command(self.cmdName)
+                    self.set_command(self.commandName)
                     # return id of command
-                    self.get_command_id(self.cmdName)
+                    self.get_command_id(self.commandName)
                     # with returned value of command upload package
                     ## testing function ##
                     # self.debug_upload_file(self.env["pkg_path"], "jcautopkg")
@@ -1095,20 +1023,20 @@ exit 0
                     self.upload_file(
                         self.env["pkg_path"], self.env["AWS_BUCKET"])
                     self.edit_command(
-                        self.env["pkg_path"], self.cmdUrl, self.cmdId)
+                        self.env["pkg_path"], self.commandUrl, self.commandId)
                     ## END AWS functions ##
                 else:
                     # command exists just return id
-                    self.get_command_id(self.cmdName)
+                    self.get_command_id(self.commandName)
             self.output("=============== END COMMAND CHECK ===============")
             self.output("=================================================")
 
             if self.env["JC_TYPE"] != "manual":
                 self.output("========== BEGIN COMMAND ASSOCIATIONS ===========")
                 # Associate command with system group
-                if not self.associate_command_with_group_list(self.get_command_id(self.env["globalCmdName"]), self.sysGrpID):
+                if not self.associate_command_with_group_list(self.get_command_id(self.commandName), self.systemGroupID):
                     self.associate_command_with_group_post(
-                        self.get_command_id(self.env["globalCmdName"]), self.sysGrpID)
+                        self.get_command_id(self.commandName), self.systemGroupID)
                 else:
                     self.output("Command Already associated with the group")
 
