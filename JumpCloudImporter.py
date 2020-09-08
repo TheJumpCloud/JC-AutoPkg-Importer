@@ -910,63 +910,6 @@ exit 0
         except ApiException as err:
             print("Exception when calling SystemGroupsApi->SystemGroupData: %s\n" % err)
 
-    def check_pkg(self):
-        """Check the status of the package. This function is used to verify
-        that the package path is not null.
-
-        it currently validates that the JC_DIST variable is not null but this
-        needs work before it's actually useful.
-        """
-        pkg_path = self.env["pkg_path"]
-        if pkg_path == "":
-            pkg_path = self.env["pathname"]
-        jc_dist = self.env["JC_DIST"]
-        if pkg_path == "" and jc_dist is not None:
-            # Determine whether the recipe is a .pkg or .dmg
-            self.output(pkg_path + " package exists")
-            object_name = os.path.basename(pkg_path)
-            filename, file_extension = os.path.splitext(pkg_path)
-            self.output("Filename is: " + filename)
-            self.output("File Extension is: " + file_extension)
-            if file_extension == ".pkg":
-                autopkgType = "pkg"
-            elif file_extension == ".dmg":
-                autopkgType = "dmg"
-            return True
-        else:
-            return False
-        # return true or false
-
-    def debug_upload_file(self, file_name, bucket, object_name=None):
-        """Formatting and copying file
-
-        :param file_name: File to upload
-        :param bucket: Bucket to upload to
-        :param object_name: S3 object name. If not specified then file_name
-        is used
-        :return: True if file was uploaded, else False
-
-        Unless modified, the object_name will exist in the root directory
-        of the bucket.
-        """
-        # using os.path.basename, get the package
-        # file_name is to locate the package
-        # object_name is the bucket object item
-        object_name = os.path.basename(file_name)
-        if object_name is None:
-            object_name = file_name
-
-        # fake upload the file
-        self.output("filename is: " + file_name)
-        self.output("object name is: " + object_name)
-        self.output("object location is: " + os.path.basename(file_name))
-        jc_dist = self.env["JC_DIST"]
-        if file_name is not None and jc_dist is not None:
-            self.output(file_name + " package exists")
-            self.output(jc_dist + " is real")
-            self.output(file_name + " " + self.commandId)
-            self.edit_command(file_name, "debug_package", self.commandId)
-
     def upload_file(self, file_name, bucket, object_name=None):
         """Upload a file to an S3 bucket
 
@@ -1063,13 +1006,6 @@ exit 0
 
             # Set naming conventions for command and package name
             self.set_global_vars()
-            # Check if the package path exists
-
-            # Debugging Step Commented Out
-            # if self.check_pkg():
-            #     self.output("true condition")
-            # else:
-            #     self.output("fail condition")
 
             self.output("============== BEGIN COMMAND CHECK ==============")
             if self.env["JC_DIST"] == "AWS":
