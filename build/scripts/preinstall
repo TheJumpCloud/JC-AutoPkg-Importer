@@ -1,0 +1,86 @@
+#!/bin/bash
+# set -e
+
+### Current Versions ###
+# Boto3
+boto3rv="1.11.10"
+# jcapiv1 & 2
+jcv1rv="4.0.0"
+jcv2rv="4.0.0"
+#########################
+
+# Check for Git
+xcode-select -p &> /dev/null
+if [[ $? -ne 0 ]]; then
+    "Git Not Installed"
+    exit 1
+fi
+
+# Check for AutoPkg installation
+# autopkgBinary = "autopkg"
+autopkgLocation="/usr/local/bin/autopkg"
+# echo "$myCmd"
+if [[ ! -f "$autopkgLocation" ]]; then
+    echo "AutoPkg must be installed before this installer may continue"
+    curl -L "https://github.com/autopkg/autopkg/releases/download/v2.2/autopkg-2.2.pkg" --silent --output /tmp/autopkg.pkg
+    installer -pkg /tmp/autopkg.pkg -target /
+else
+    echo "AutoPkg is installed"
+fi
+
+# Determine whether or not the JCAPI Python v1 and v2 modules are installed in AutoPkg pacakged version of Python
+list=$(/usr/local/autopkg/python -m pip list)
+
+# Get Versions of the JCAPIs and boto3
+while IFS= read -r line; do
+    # echo "... $line ..."
+    if [[ ${line[*]} =~ "jcapiv1" ]]; then
+        # jcapiv1[name]=$(echo "$line" | head -n1 | awk '{print $1;}')
+        v1v=$(echo "$line" | head -n1 | awk '{print $2;}')
+        # echo "$line"
+    fi
+    if [[ ${line[*]} =~ "jcapiv2" ]]; then
+        # jcapiv2[name]=$(echo "$line" | head -n1 | awk '{print $1;}')
+        v2v=$(echo "$line" | head -n1 | awk '{print $2;}')
+        # echo "$line"
+    fi
+    if [[ ${line[*]} =~ "boto3" ]]; then
+        # boto3[name]=$(echo "$line" | head -n1 | awk '{print $1;}')
+        boto3v=$(echo "$line" | head -n1 | awk '{print $2;}')
+        # echo "$line"
+    fi
+done <<< "$list"
+
+# If not installed, add to to postinstall list
+if [[ ! $v1v ]];then
+    echo "installing jcapiv1"
+    /usr/local/autopkg/python -m pip install git+https://github.com/TheJumpCloud/jcapi-python.git#subdirectory=jcapiv1
+else
+    echo "jcapiv1 version $v1v" "installed"
+fi
+if [[ ! $v2v ]];then
+    echo "installing jcapiv2"
+    /usr/local/autopkg/python -m pip install git+https://github.com/TheJumpCloud/jcapi-python.git#subdirectory=jcapiv2
+else
+    echo "jcapiv2 version: $v2v" "installed"
+fi
+if [[ ! $boto3v ]];then
+    echo "installing boto3"
+    /usr/local/autopkg/python -m pip install boto3
+else
+    echo "boto3 version: $boto3v installed"
+fi
+# If not up to date, reinstall in postinsall # will not do
+# If installed, skip during postinstall
+
+# Check for AWS
+awsLocation="/usr/local/bin/aws"
+if [[ ! -f "$awsLocation" ]]; then
+     echo "AWS must be installed before this installer may continue"
+    curl "https://awscli.amazonaws.com/AWSCLIV2.pkg" --silent --output /tmp/AWSCLIV2.pkg
+    installer -pkg /tmp/AWSCLIV2.pkg -target /
+else
+    echo "AWS Cli is installed"
+fi
+
+exit 0

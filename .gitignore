@@ -1,3 +1,5 @@
 .vscode
 todo.md
 .DS_Store
+__pycache__
+*.pkg
