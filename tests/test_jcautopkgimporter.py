@@ -48,8 +48,10 @@ class autopkgTests(unittest.TestCase):
     def testAutoPkgRun(self):
         '''Tests Firefox Recipe'''
         pwd = os.getcwd()
-        recipe_overrides/Firefox.jumpcloud.recipe
-        self.bash_command("autopkg run {}../recipe_overrides/Firefox.jumpcloud.recipe").format(pwd)
+        parent = os.path.dirname(pwd)
+        recipe = ("{}/recipe_overrides/Firefox.jumpcloud.recipe").format(parent)
+
+        self.bash_command(("autopkg run {}").format(recipe))
         latest_file = max(self.recipeRecipts, key=os.path.getctime)
         print(latest_file)
 
