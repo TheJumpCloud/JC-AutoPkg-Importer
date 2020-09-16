@@ -24,7 +24,7 @@ class teardown():
         subprocess.Popen(["/bin/bash", ('{}/scripts/teardown_env.sh').format(pwd)])
 
 
-class pythonLibrary(unittest.TestCase):
+class autopkgTests(unittest.TestCase):
     autopkgPythonPath = "/usr/local/bin/autopkg"
     # installedModulels = ("jcapiv1", "jdcapiv2", "boto3")
     recipeRepo = "https://github.com/autopkg/recipes"
@@ -68,12 +68,12 @@ class pythonLibrary(unittest.TestCase):
 
 if __name__ == "__main__":
     # setup
-    x = setup()
-    x.setAPIKey()
+    # x = setup()
+    # x.setAPIKey()
 
     # tests
     unittest.main()
 
     # teardown
-    y = teardown()
-    y.removeAPIKey()
+    # y = teardown()
+    # y.removeAPIKey()

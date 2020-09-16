@@ -14,8 +14,8 @@ ex: /usr/local/autopkg/python test_runner.py
 import unittest
 
 # import test modules
-# import pue_verify
 import postinstall_verify
+import test_jcautopkgimporter
 
 # location of the jumpcloud_bootstrap_template.sh and postinstall.sh files
 # change if these files do not exist in the parent directory
@@ -31,6 +31,7 @@ suite = unittest.TestSuite()
 # add tests to run
 # suite.addTests(loader.loadTestsFromModule(pue_verify))
 suite.addTests(loader.loadTestsFromModule(postinstall_verify))
+suite.addTests(loader.loadTestsFromModule(test_jcautopkgimporter))
 
 # initialize a runner, pass it your suite and run
 runner = unittest.TextTestRunner(verbosity=2)
