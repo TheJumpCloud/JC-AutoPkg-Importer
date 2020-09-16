@@ -47,8 +47,9 @@ class autopkgTests(unittest.TestCase):
 
     def testAutoPkgRun(self):
         '''Tests Firefox Recipe'''
-        # pwd = os.getcwd()
-        self.bash_command("autopkg run /Users/jworkman/Documents/GitHub/JC-AutoPkg-Importer/recipe_overrides/Firefox.jumpcloud.recipe")
+        pwd = os.getcwd()
+        recipe_overrides/Firefox.jumpcloud.recipe
+        self.bash_command("autopkg run {}../recipe_overrides/Firefox.jumpcloud.recipe").format(pwd)
         latest_file = max(self.recipeRecipts, key=os.path.getctime)
         print(latest_file)
 
