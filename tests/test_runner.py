@@ -1,11 +1,9 @@
 
 '''
-This test suite checks the existence of required variables
-to run the prestage user enrollment script.
+This test suite checks for a valid JumpCloud AutoPkg Importer install and runs
+a test recipe through the importer to check for errors.
 
-Python3.x is required to run this test suite. Change the variables
-for the prestage user enrollment script and postinstall script below if
-using this test suite outside of the context of the github repository.
+Python3.x is required to run this test suite.
 
 to run the tests:
 Invoke python from /usr/local/autopkg/python to test autopkg installs
@@ -18,28 +16,22 @@ import sys
 import postinstall_verify
 import test_jcautopkgimporter
 
-# location of the jumpcloud_bootstrap_template.sh and postinstall.sh files
-# change if these files do not exist in the parent directory
-# postinstall_verify.pythonLibrary = "/usr/local/bin/autopkg"
-
-# pue_verify.text_PUE.script = "../jumpcloud_bootstrap_template.sh"
-# postinstall_verify.text_POST.script = "../postinstall.sh" #TODO: should check for installed stuff
-
 # initialize test suite
 loader = unittest.TestLoader()
 suite = unittest.TestSuite()
 
 # add tests to run
-# suite.addTests(loader.loadTestsFromModule(pue_verify))
 suite.addTests(loader.loadTestsFromModule(postinstall_verify))
 suite.addTests(loader.loadTestsFromModule(test_jcautopkgimporter))
 
-# initialize a runner, pass it your suite and run
+# initialize a runner, pass in your suite and run
 runner = unittest.TextTestRunner(verbosity=2)
 result = runner.run(suite)
 
+# Display failures in the console
 for i in result.failures:
     print(i)
 
+# Error out of there were any failures or errors
 if result.failures or result.errors:
     sys.exit(1)

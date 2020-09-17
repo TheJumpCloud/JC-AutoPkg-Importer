@@ -2,6 +2,7 @@
 ################################################################################
 # Setup JumpCloud AutoPkg Importer Installer:
 # Run: sh build.sh from this directory
+# The installer .pkg will be built in this directory
 ################################################################################
 
 cwd=$(dirname "$0")

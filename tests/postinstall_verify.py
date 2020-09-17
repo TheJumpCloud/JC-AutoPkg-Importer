@@ -1,7 +1,6 @@
 import unittest
 import os
 import os.path
-import re
 import subprocess
 
 
@@ -25,6 +24,7 @@ class pythonLibrary(unittest.TestCase):
         for i in self.installedModulels:
             print("testing : " + i)
             self.assertTrue(i in modules)
+
 
 if __name__ == "__main__":
     unittest.main()

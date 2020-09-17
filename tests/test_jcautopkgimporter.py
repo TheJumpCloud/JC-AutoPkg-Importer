@@ -6,24 +6,6 @@ import plistlib
 import subprocess
 
 
-class setup():
-    '''setup and git clone repo for tests'''
-
-    def setAPIKey(self):
-        '''Setup Env'''
-        pwd = os.getcwd()
-        subprocess.Popen(["/bin/bash", ('{}/scripts/setup_env.sh').format(pwd), "REPLACE_ME"])
-
-
-class teardown():
-    '''teardown tasks for tests'''
-
-    def removeAPIKey(self):
-        '''Destroy Env'''
-        pwd = os.getcwd()
-        subprocess.Popen(["/bin/bash", ('{}/scripts/teardown_env.sh').format(pwd)])
-
-
 class autopkgTests(unittest.TestCase):
     autopkgPythonPath = "/usr/local/bin/autopkg"
     # installedModulels = ("jcapiv1", "jdcapiv2", "boto3")
@@ -73,13 +55,5 @@ class autopkgTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    # setup
-    # x = setup()
-    # x.setAPIKey()
-
     # tests
     unittest.main()
-
-    # teardown
-    # y = teardown()
-    # y.removeAPIKey()
