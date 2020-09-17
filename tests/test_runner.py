@@ -12,6 +12,7 @@ Invoke python from /usr/local/autopkg/python to test autopkg installs
 ex: /usr/local/autopkg/python test_runner.py
 '''
 import unittest
+import sys
 
 # import test modules
 import postinstall_verify
@@ -36,3 +37,9 @@ suite.addTests(loader.loadTestsFromModule(test_jcautopkgimporter))
 # initialize a runner, pass it your suite and run
 runner = unittest.TextTestRunner(verbosity=2)
 result = runner.run(suite)
+
+for i in result.failures:
+    print(i)
+
+if result.failures or result.errors:
+    sys.exit(1)
