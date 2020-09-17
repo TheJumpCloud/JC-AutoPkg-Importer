@@ -10,6 +10,7 @@
 # Set JC API Key for testing
 echo "Setting API Key..."
 defaults write ~/Library/Preferences/com.github.autopkg.plist JC_API "$1"
+defaults read ~/Library/Preferences/com.github.autopkg.plist JC_API
 
 # Set AWS S3 Creds:
 credentialsAWS=~/.aws/credentials
