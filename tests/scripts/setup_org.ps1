@@ -12,12 +12,14 @@ Try
     # Specifically the Firefox Groups:
     $firefoxGroups = Get-JCGroup -type System | Where-Object name -Like AutoPkg-Firefox* | Select-Object name
     foreach ($i in $firefoxGroups) {
-        Remove-JCSystemGroup  $i -force
+        # Write-Host($i.name)
+        Remove-JCSystemGroup  $i.name -force
     }
     # Specifically Firefox Commands
     $firefoxCommand = Get-JCCommand | Where-Object name -Like AutoPkg-Firefox* | select-object id
     foreach ($i in $firefoxCommand) {
-        Remove-JCCommand -CommandID $i -force
+        # Write-Host($i.id)
+        Remove-JCCommand -CommandID $i.id -force
     }
 }
 Catch
