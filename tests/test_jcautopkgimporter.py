@@ -51,8 +51,8 @@ class autopkgTests(unittest.TestCase):
         recipe = ("{}/recipe_overrides/Firefox.jumpcloud.recipe").format(pwd)
         print("Recipe Path: " + recipe)
         # run the autopkg recipe
-        self.bash_command(("autoperationsopkg run {}").format(recipe))
-        # check for recipt
+        self.bash_command(("autopkg run {}").format(recipe))
+        # check for receipt
         recipeReceiptPath = '~/Library/AutoPkg/Cache/local.pkg.Firefox/receipts/*.plist'
         recipeReceiptPathExpanded = os.path.expanduser(recipeReceiptPath)
         recipeRecipts = glob.glob(recipeReceiptPathExpanded)
