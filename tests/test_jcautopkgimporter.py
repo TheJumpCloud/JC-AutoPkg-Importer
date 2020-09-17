@@ -28,10 +28,7 @@ class autopkgTests(unittest.TestCase):
     autopkgPythonPath = "/usr/local/bin/autopkg"
     # installedModulels = ("jcapiv1", "jdcapiv2", "boto3")
     recipeRepo = "https://github.com/autopkg/recipes"
-    recipeReceiptPath = '~/Library/AutoPkg/Cache/local.pkg.Firefox/receipts/*.plist'
-    recipeReceiptPathExpanded = os.path.expanduser(recipeReceiptPath)
-    recipeRecipts = glob.glob(recipeReceiptPathExpanded)
-
+    
     def bash_command(self, cmd):
         sp = subprocess.run(['/bin/bash', '-c', cmd], stdout=subprocess.PIPE, text=True)
         return sp.stdout
@@ -53,8 +50,13 @@ class autopkgTests(unittest.TestCase):
         # print("parent Path: " + parent)
         recipe = ("{}/recipe_overrides/Firefox.jumpcloud.recipe").format(pwd)
         print("Recipe Path: " + recipe)
-        self.bash_command(("autopkg run {}").format(recipe))
-        latest_file = max(self.recipeRecipts, key=os.path.getctime)
+        # run the autopkg recipe
+        self.bash_command(("autoperationsopkg run {}").format(recipe))
+        # check for recipt
+        recipeReceiptPath = '~/Library/AutoPkg/Cache/local.pkg.Firefox/receipts/*.plist'
+        recipeReceiptPathExpanded = os.path.expanduser(recipeReceiptPath)
+        recipeRecipts = glob.glob(recipeReceiptPathExpanded)
+        latest_file = max(recipeRecipts, key=os.path.getctime)
         print(latest_file)
 
         with open(latest_file, 'rb') as fp:
