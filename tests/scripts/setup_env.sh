@@ -25,6 +25,7 @@ fi
 # Write the credential settings
 echo "Setting AWS Credentials..."
 cat << EOF >$credentialsAWS
+[default]
 aws_access_key_id = $2
 aws_secret_access_key = $3
 EOF

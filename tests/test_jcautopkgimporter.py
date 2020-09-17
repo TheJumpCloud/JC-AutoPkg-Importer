@@ -72,7 +72,6 @@ class autopkgTests(unittest.TestCase):
                 self.assertIsNone(i)
 
 
-
 if __name__ == "__main__":
     # setup
     # x = setup()
