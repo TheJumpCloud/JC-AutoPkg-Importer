@@ -19,7 +19,7 @@ jobs: # a basic unit of work in a run
           # setup test env
           name: Setup Test Environment
           shell: bash
-          command: /.tests/scripts/setup_env.sh
+          command: .tests/scripts/setup_env.sh
       # - store_artifacts: # store this build output. Read more: https://circleci.com/docs/2.0/artifacts/
       #     path: app.zip
       #     destination: app
