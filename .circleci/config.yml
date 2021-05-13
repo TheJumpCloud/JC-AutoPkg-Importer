@@ -8,6 +8,7 @@ jobs: # a basic unit of work in a run
       - run:
           # run our tests using xcode's cli tool `xcodebuild`
           name: Build JC AutoPkg Importer
+          shell: bash
           command: ./deploy/build.sh
           # command: xcodebuild test -scheme circleci-demo-macos
       # - run:
