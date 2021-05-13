@@ -20,7 +20,7 @@ jobs: # a basic unit of work in a run
           name: Setup Test Environment
           shell: bash
           command: ./tests/scripts/setup_env.sh
-        - run:
+      - run:
           # setup JumpCloud test org test env
           name: Setup JumpCloud Test Organization
           shell: pwsh
