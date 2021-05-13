@@ -11,8 +11,9 @@ cwd=$(dirname "$0")
 cp "${cwd}/../JumpCloudImporter.py" "${cwd}/../build/root/Library/AutoPkg/autopkglib/JumpCloudImporter.py"
 
 # build package with folling variables
+# TODO: env variable for app version -> pull latest from GH release
 PKG_IDENTIFIER="com.jumpcloud.autopkgimporter"
-APP_VERSION="0.1.2"
+APP_VERSION="0.1.3"
 APP_PATH="${cwd}/../build/root"
 SCRIPT_PATH="${cwd}/../build/scripts"
 
