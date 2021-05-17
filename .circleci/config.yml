@@ -32,7 +32,7 @@ jobs: # a basic unit of work in a run
           # setup test env
           name: Setup Test Environment
           shell: /bin/bash
-          command: ./tests/scripts/setup_env.sh $env:JC_API_Key
+          command: ./tests/scripts/setup_env.sh $JC_API_Key
       - run:
           # setup JumpCloud test org test env
           name: Setup JumpCloud Test Organization
