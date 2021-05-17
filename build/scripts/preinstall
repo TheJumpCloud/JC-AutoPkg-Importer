@@ -23,7 +23,7 @@ autopkgLocation="/usr/local/bin/autopkg"
 if [[ ! -f "$autopkgLocation" ]]; then
     echo "AutoPkg must be installed before this installer may continue"
     curl -L "https://github.com/autopkg/autopkg/releases/download/v2.3.1/autopkg-2.3.1.pkg" --silent --output /tmp/autopkg.pkg
-    installer -pkg /tmp/autopkg.pkg -target /
+    sudo installer -pkg /tmp/autopkg.pkg -target /
 else
     echo "AutoPkg is installed"
 fi
@@ -78,7 +78,7 @@ awsLocation="/usr/local/bin/aws"
 if [[ ! -f "$awsLocation" ]]; then
      echo "AWS must be installed before this installer may continue"
     curl "https://awscli.amazonaws.com/AWSCLIV2.pkg" --silent --output /tmp/AWSCLIV2.pkg
-    installer -pkg /tmp/AWSCLIV2.pkg -target /
+    sudo installer -pkg /tmp/AWSCLIV2.pkg -target /
 else
     echo "AWS Cli is installed"
 fi
