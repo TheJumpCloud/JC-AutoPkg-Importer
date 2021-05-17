@@ -32,12 +32,17 @@ jobs: # a basic unit of work in a run
           # setup test env
           name: Setup Test Environment
           shell: /bin/bash
-          command: ./tests/scripts/setup_env.sh $JC_API_Key
+          command: ./tests/scripts/setup_env.sh "$JC_API_Key" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"
       - run:
           # setup JumpCloud test org test env
           name: Setup JumpCloud Test Organization
           shell: pwsh
-          command: ./tests/scripts/setup_org.ps1
+          command: ./tests/scripts/setup_org.ps1 $JC_API_Key
+      - run:
+        # Run Python Tests
+        name: Run Python Tests
+        shell: python3
+        command: ./tests/test_runner.py
       # - store_artifacts: # store this build output. Read more: https://circleci.com/docs/2.0/artifacts/
       #     path: app.zip
       #     destination: app
