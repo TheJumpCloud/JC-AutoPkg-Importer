@@ -37,7 +37,7 @@ jobs: # a basic unit of work in a run
           # setup JumpCloud test org test env
           name: Setup JumpCloud Test Organization
           shell: pwsh
-          command: ./tests/scripts/setup_org.ps1 -JumpCloudApiKey $JC_API_Key
+          command: ./tests/scripts/setup_org.ps1 -JumpCloudApiKey $ENV:JC_API_Key
       - run:
           # Run Python Tests
           name: Run Python Tests
