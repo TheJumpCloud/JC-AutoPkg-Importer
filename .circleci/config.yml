@@ -39,10 +39,10 @@ jobs: # a basic unit of work in a run
           shell: pwsh
           command: ./tests/scripts/setup_org.ps1 $JC_API_Key
       - run:
-        # Run Python Tests
-        name: Run Python Tests
-        shell: python3
-        command: ./tests/test_runner.py
+          # Run Python Tests
+          name: Run Python Tests
+          shell: python3
+          command: ./tests/test_runner.py
       # - store_artifacts: # store this build output. Read more: https://circleci.com/docs/2.0/artifacts/
       #     path: app.zip
       #     destination: app
