@@ -20,8 +20,9 @@ jobs: # a basic unit of work in a run
           name: Install JCAPI-Python
           shell: bash
           command:
-            pip install git+https://github.com/TheJumpCloud/jcapi-python.git#subdirectory=jcapiv1
-            pip install git+https://github.com/TheJumpCloud/jcapi-python.git#subdirectory=jcapiv2
+            /usr/local/autopkg/python -m pip install git+https://github.com/TheJumpCloud/jcapi-python.git#subdirectory=jcapiv1
+            /usr/local/autopkg/python -m pip install git+https://github.com/TheJumpCloud/jcapi-python.git#subdirectory=jcapiv2
+            /usr/local/autopkg/python -m pip install boto3
       - run:
           # setup test env
           name: Setup Test Environment
