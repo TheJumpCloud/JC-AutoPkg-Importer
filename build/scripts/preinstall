@@ -54,19 +54,19 @@ done <<< "$list"
 # If not installed, add to to postinstall list
 if [[ ! $v1v ]];then
     echo "installing jcapiv1"
-    /usr/local/autopkg/python -m pip install git+https://github.com/TheJumpCloud/jcapi-python.git#subdirectory=jcapiv1
+    /usr/local/autopkg/python -m pip install git+https://github.com/TheJumpCloud/jcapi-python.git#subdirectory=jcapiv1 --user
 else
     echo "jcapiv1 version $v1v" "installed"
 fi
 if [[ ! $v2v ]];then
     echo "installing jcapiv2"
-    /usr/local/autopkg/python -m pip install git+https://github.com/TheJumpCloud/jcapi-python.git#subdirectory=jcapiv2
+    /usr/local/autopkg/python -m pip install git+https://github.com/TheJumpCloud/jcapi-python.git#subdirectory=jcapiv2 --user
 else
     echo "jcapiv2 version: $v2v" "installed"
 fi
 if [[ ! $boto3v ]];then
     echo "installing boto3"
-    /usr/local/autopkg/python -m pip install boto3
+    /usr/local/autopkg/python -m pip install boto3 --user
 else
     echo "boto3 version: $boto3v installed"
 fi
