@@ -6,6 +6,14 @@ jobs: # a basic unit of work in a run
     steps: # a series of commands to run
       - checkout  # pull down code from your version control system.
       - run:
+          # Install PowerShell for MacOS
+          name: Install PowerShell for MacOS
+          shell: /bin/bash
+          command:
+            # brew tap homebrew/cask-versions
+            # brew install --cask powershell-preview
+            brew install powershell/tap/powershell
+      - run:
           # setup test env
           name: Install JCAPI-Python & AutoPkg prereqs
           shell: /bin/bash
@@ -25,13 +33,6 @@ jobs: # a basic unit of work in a run
           name: Setup Test Environment
           shell: /bin/bash
           command: ./tests/scripts/setup_env.sh
-      - run:
-          # Install PowerShell for MacOS
-          name: Install PowerShell for MacOS
-          shell: /bin/bash
-          command:
-            brew tap homebrew/cask-versions
-            brew install --cask powershell-preview
       - run:
           # setup JumpCloud test org test env
           name: Setup JumpCloud Test Organization
