@@ -17,12 +17,9 @@ jobs: # a basic unit of work in a run
           command: ./deploy/install.sh
       - run:
           # setup test env
-          name: Install JCAPI-Python
+          name: Install JCAPI-Python & AutoPkg prereqs
           shell: bash
-          command:
-            /usr/local/autopkg/python -m pip install git+https://github.com/TheJumpCloud/jcapi-python.git#subdirectory=jcapiv1
-            /usr/local/autopkg/python -m pip install git+https://github.com/TheJumpCloud/jcapi-python.git#subdirectory=jcapiv2
-            /usr/local/autopkg/python -m pip install boto3
+          command: ./build/scripts/preinstall.sh
       - run:
           # setup test env
           name: Setup Test Environment
