@@ -5,11 +5,11 @@ jobs: # a basic unit of work in a run
       xcode: 11.3.0 # indicate our selected version of Xcode
     steps: # a series of commands to run
       - checkout  # pull down code from your version control system.
-      # - run:
-      #     # setup test env
-      #     name: Install JCAPI-Python & AutoPkg prereqs
-      #     shell: /bin/bash
-      #     command: ./build/scripts/preinstall
+      - run:
+          # setup test env
+          name: Install JCAPI-Python & AutoPkg prereqs
+          shell: /bin/bash
+          command: ./build/scripts/preinstall
       - run:
           # build JumpCloud-AutoPkg-Importer .pkg installer
           name: Build JumpCloud AutoPkg Importer
