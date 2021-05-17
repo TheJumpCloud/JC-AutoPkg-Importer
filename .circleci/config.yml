@@ -8,22 +8,22 @@ jobs: # a basic unit of work in a run
       - run:
           # setup test env
           name: Install JCAPI-Python & AutoPkg prereqs
-          shell: bash
+          shell: /bin/bash
           command: ./build/scripts/preinstall.sh
       - run:
           # build JumpCloud-AutoPkg-Importer .pkg installer
           name: Build JumpCloud AutoPkg Importer
-          shell: bash
+          shell: /bin/bash
           command: ./deploy/build.sh
       - run:
           # install JumpCloud-AutoPkg-Importer
           name: Install JumpCloud-AutoPkg-Importer
-          shell: bash
+          shell: /bin/bash
           command: ./deploy/install.sh
       - run:
           # setup test env
           name: Setup Test Environment
-          shell: bash
+          shell: /bin/bash
           command: ./tests/scripts/setup_env.sh
       - run:
           # setup JumpCloud test org test env
