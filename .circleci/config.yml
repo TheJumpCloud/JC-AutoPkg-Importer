@@ -8,6 +8,7 @@ jobs: # a basic unit of work in a run
   jc_org_setup: # runs not using `Workflows` must have a `build` job as entry point
     executor: macos_exec
     steps:
+      - checkout
       - run:
           # Install PowerShell for MacOS
           name: Install PowerShell for MacOS
@@ -69,3 +70,4 @@ workflows:
       - test:
           requires:
             - build
+            - jc_org_setup
