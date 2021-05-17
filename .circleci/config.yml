@@ -38,7 +38,9 @@ jobs: # a basic unit of work in a run
           name: Setup JumpCloud Test Organization
           shell: pwsh
           command: ./tests/scripts/setup_org.ps1 -JumpCloudApiKey $ENV:JC_API_Key
-  Test:
+  test:
+    macos:  # indicate that we are using the macOS executor
+      xcode: 11.3.0 # indicate our selected version of Xcode
     steps:
       - run:
           # Run Python Tests
