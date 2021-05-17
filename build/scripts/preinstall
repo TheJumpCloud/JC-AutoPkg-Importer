@@ -22,7 +22,7 @@ autopkgLocation="/usr/local/bin/autopkg"
 # echo "$myCmd"
 if [[ ! -f "$autopkgLocation" ]]; then
     echo "AutoPkg must be installed before this installer may continue"
-    curl -L "https://github.com/autopkg/autopkg/releases/download/v2.2/autopkg-2.2.pkg" --silent --output /tmp/autopkg.pkg
+    curl -L "https://github.com/autopkg/autopkg/releases/download/v2.3.1/autopkg-2.3.1.pkg" --silent --output /tmp/autopkg.pkg
     installer -pkg /tmp/autopkg.pkg -target /
 else
     echo "AutoPkg is installed"
