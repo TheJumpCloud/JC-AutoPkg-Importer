@@ -17,6 +17,13 @@ jobs: # a basic unit of work in a run
           command: ./deploy/install.sh
       - run:
           # setup test env
+          name: Install JCAPI-Python
+          shell: bash
+          command: -
+            pip install git+https://github.com/TheJumpCloud/jcapi-python.git#subdirectory=jcapiv1
+            pip install git+https://github.com/TheJumpCloud/jcapi-python.git#subdirectory=jcapiv2
+      - run:
+          # setup test env
           name: Setup Test Environment
           shell: bash
           command: ./tests/scripts/setup_env.sh
