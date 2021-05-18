@@ -37,9 +37,12 @@ jobs: # a basic unit of work in a run
           shell: /bin/bash
           command: ./deploy/build.sh
       - persist_to_workspace:
-          root: ~/
+          root: ~/project
           paths:
-            - *
+            - build/*
+            - deploy
+            - recipe_overrides
+            - tests/*
   test:
     executor: macos_exec
     steps:
