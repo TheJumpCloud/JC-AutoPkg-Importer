@@ -37,7 +37,7 @@ jobs: # a basic unit of work in a run
           shell: /bin/bash
           command: ./deploy/build.sh
       - persist_to_workspace:
-          root: ./
+          root: $CIRCLE_WORKING_DIRECTORY
           paths:
             - deploy
             - recipe_overrides
