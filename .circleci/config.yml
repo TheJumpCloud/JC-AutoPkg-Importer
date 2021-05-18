@@ -37,8 +37,9 @@ jobs: # a basic unit of work in a run
           shell: /bin/bash
           command: ./deploy/build.sh
       - persist_to_workspace:
-          root: $CIRCLE_WORKING_DIRECTORY
+          root: ~/
           paths:
+            - build/*
             - deploy
             - recipe_overrides
             - tests/*
@@ -46,7 +47,7 @@ jobs: # a basic unit of work in a run
     executor: macos_exec
     steps:
       - attach_workspace:
-          at: ./
+          at: ~/
       # - checkout  # pull down code from your version control system.
       - run:
           # setup test env
