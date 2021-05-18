@@ -1,0 +1,77 @@
+version: 2.1
+orbs:
+  win: circleci/windows@2.2.0
+executors:
+  macos_exec:
+    macos:
+      xcode: 11.3.0
+jobs:
+  jumpcloud_org_setup:
+    executor:
+      name: win/default
+      shell: powershell.exe
+    steps:
+      - checkout
+      # - run:
+      #     # Install PowerShell for MacOS
+      #     name: Install PowerShell for MacOS
+      #     shell: /bin/bash
+      #     command:
+      #       brew install powershell/tap/powershell
+      - run:
+          # Setup JumpCloud test org test env
+          name: Setup JumpCloud Test Organization
+          shell: powershell.exe
+          command: ./tests/scripts/setup_org.ps1 -JumpCloudApiKey $ENV:JC_API_Key
+  build: # runs not using `Workflows` must have a `build` job as entry point
+    executor: macos_exec
+    steps: # a series of commands to run
+      - checkout  # pull down code from your version control system.
+      - run:
+          # Build JumpCloud-AutoPkg-Importer .pkg installer
+          name: Build JumpCloud AutoPkg Importer
+          shell: /bin/bash
+          command: ./deploy/build.sh
+      - persist_to_workspace:
+          root: ~/project
+          paths:
+            - build/*
+            - deploy
+            - recipe_overrides
+            - tests/*
+  test:
+    executor: macos_exec
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - run:
+          # Install Package Prerequisites
+          name: Install JCAPI-Python & AutoPkg prereqs
+          shell: /bin/bash
+          command: ./build/scripts/preinstall
+      - run:
+          # Install JumpCloud-AutoPkg-Importer
+          name: Install JumpCloud-AutoPkg-Importer
+          shell: /bin/bash
+          command: ./deploy/install.sh
+      - run:
+          # Setup test env
+          name: Setup Test Environment
+          shell: /bin/bash
+          command: ./tests/scripts/setup_env.sh "$JC_API_Key" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"
+      - run:
+          # Run Python Tests
+          name: Run Python Tests
+          shell: /bin/bash
+          command: python3 ./tests/test_runner.py
+
+workflows:
+  version: 2
+  build-and-test:
+    jobs:
+      - jumpcloud_org_setup
+      - build
+      - test:
+          requires:
+            - build
+            - jumpcloud_org_setup

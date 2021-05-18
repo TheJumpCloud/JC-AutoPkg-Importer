@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Identifier</key>
+	<string>local.pkg.GitHubDesktop</string>
+	<key>Input</key>
+	<dict>
+		<key>BUNDLE_ID</key>
+		<string>com.github.GitHub</string>
+		<key>DOWNLOAD_URL</key>
+		<string>https://central.github.com/deployments/desktop/desktop/latest/darwin</string>
+		<key>NAME</key>
+		<string>GitHub Desktop</string>
+	</dict>
+	<key>ParentRecipe</key>
+	<string>com.github.homebysix.pkg.GitHubDesktop</string>
+	<key>Process</key>
+	<array>
+		<dict>
+			<key>Processor</key>
+			<string>JumpCloudImporter</string>
+			<key>Arguments</key>
+			<dict>
+				<key>JC_DIST</key>
+				<string>AWS</string>
+				<key>AWS_BUCKET</key>
+				<string>jcautopkg</string>
+				<key>JC_SYSGROUP</key>
+				<string>AutoPkg-%NAME%-%version%</string>
+				<key>JC_TYPE</key>
+				<string>auto</string>
+			</dict>
+		</dict>
+	</array>
+	<key>ParentRecipeTrustInfo</key>
+	<dict>
+		<key>non_core_processors</key>
+		<dict/>
+		<key>parent_recipes</key>
+		<dict>
+			<key>com.github.homebysix.download.GitHubDesktop</key>
+			<dict>
+				<key>git_hash</key>
+				<string>ce0f2c7545cf82e7911cc154c5815fba794f8faf</string>
+				<key>path</key>
+				<string>~/Library/AutoPkg/RecipeRepos/com.github.autopkg.homebysix-recipes/GitHub/GitHubDesktop.download.recipe</string>
+				<key>sha256_hash</key>
+				<string>58533c854036c09890c73f5dfca7a4395ae7bd7231d997f5ed8525c229d44e4f</string>
+			</dict>
+			<key>com.github.homebysix.pkg.GitHubDesktop</key>
+			<dict>
+				<key>git_hash</key>
+				<string>527f06ba4c6f3d649fea1c46fc49e828bae0f51a</string>
+				<key>path</key>
+				<string>~/Library/AutoPkg/RecipeRepos/com.github.autopkg.homebysix-recipes/GitHub/GitHubDesktop.pkg.recipe</string>
+				<key>sha256_hash</key>
+				<string>eb74945da41c442647df77698c9d94c1d48ea3d75e756e6bfb3b3bed36a9fd7d</string>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>

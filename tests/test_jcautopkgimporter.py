@@ -37,7 +37,9 @@ class autopkgTests(unittest.TestCase):
         # check for receipt
         recipeReceiptPath = '~/Library/AutoPkg/Cache/local.pkg.Firefox/receipts/*.plist'
         recipeReceiptPathExpanded = os.path.expanduser(recipeReceiptPath)
+        print(recipeReceiptPathExpanded)
         recipeRecipts = glob.glob(recipeReceiptPathExpanded)
+        print(recipeRecipts)
         latest_file = max(recipeRecipts, key=os.path.getctime)
         print(latest_file)
 
