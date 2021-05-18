@@ -39,7 +39,7 @@ jobs: # a basic unit of work in a run
       - persist_to_workspace:
           root: ~/
           paths:
-            - *
+            - /*
   test:
     executor: macos_exec
     steps:
