@@ -47,7 +47,7 @@ jobs: # a basic unit of work in a run
     executor: macos_exec
     steps:
       - attach_workspace:
-          at: ~/
+          at: ~/project
       # - checkout  # pull down code from your version control system.
       - run:
           # setup test env
