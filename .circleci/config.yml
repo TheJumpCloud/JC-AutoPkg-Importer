@@ -7,18 +7,20 @@ executors:
 jobs:
   jumpcloud_org_setup:
     executor: macos_exec
+      name: win/default
+      shell: powershell.exe
     steps:
       - checkout
-      - run:
-          # Install PowerShell for MacOS
-          name: Install PowerShell for MacOS
-          shell: /bin/bash
-          command:
-            brew install powershell/tap/powershell
+      # - run:
+      #     # Install PowerShell for MacOS
+      #     name: Install PowerShell for MacOS
+      #     shell: /bin/bash
+      #     command:
+      #       brew install powershell/tap/powershell
       - run:
           # Setup JumpCloud test org test env
           name: Setup JumpCloud Test Organization
-          shell: pwsh
+          shell: powershell.exe
           command: ./tests/scripts/setup_org.ps1 -JumpCloudApiKey $ENV:JC_API_Key
   build: # runs not using `Workflows` must have a `build` job as entry point
     executor: macos_exec
