@@ -36,20 +36,28 @@ jobs: # a basic unit of work in a run
           name: Build JumpCloud AutoPkg Importer
           shell: /bin/bash
           command: ./deploy/build.sh
-      - run:
-          # install JumpCloud-AutoPkg-Importer
-          name: Install JumpCloud-AutoPkg-Importer
-          shell: /bin/bash
-          command: ./deploy/install.sh
+      - persist_to_workspace:
+        root: ./
+        paths:
+          - deploy
+          - recipe_overrides
+          - tests/*
   test:
     executor: macos_exec
     steps:
-      - checkout  # pull down code from your version control system.
+      - attach_workspace:
+        at: ./
+      # - checkout  # pull down code from your version control system.
       - run:
           # setup test env
           name: Install JCAPI-Python & AutoPkg prereqs
           shell: /bin/bash
           command: ./build/scripts/preinstall
+      - run:
+          # install JumpCloud-AutoPkg-Importer
+          name: Install JumpCloud-AutoPkg-Importer
+          shell: /bin/bash
+          command: ./deploy/install.sh
       - run:
           # setup test env
           name: Setup Test Environment
