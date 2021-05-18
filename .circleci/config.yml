@@ -1,12 +1,13 @@
 version: 2.1
-
+orbs:
+  win: circleci/windows@2.2.0
 executors:
   macos_exec:
     macos:
       xcode: 11.3.0
 jobs:
   jumpcloud_org_setup:
-    executor: macos_exec
+    executor:
       name: win/default
       shell: powershell.exe
     steps:
