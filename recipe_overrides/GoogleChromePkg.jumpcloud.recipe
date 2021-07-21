@@ -20,6 +20,8 @@
             <string>JumpCloudImporter</string>
             <key>Arguments</key>
             <dict>
+				<key>JC_SOFTWARE</key>
+				<string>Software</string>
                 <key>JC_DIST</key>
                 <string>AWS</string>
 				<key>AWS_BUCKET</key>
@@ -27,13 +29,7 @@
                 <key>JC_SYSGROUP</key>
                 <string>AutoPkg-%NAME%-%version%</string>
 				<key>JC_TYPE</key>
-				<string>auto</string>
-				<key>JC_TRIGGER</key>
-				<true/>
-				<key>JC_REPEAT_TYPE</key>
-				<string>minute</string>
-				<key>JC_REPEAT_CRON</key>
-				<string>0 */5 * * * *</string>
+				<string>manual</string>
             </dict>
         </dict>
     </array>

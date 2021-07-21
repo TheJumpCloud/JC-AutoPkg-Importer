@@ -30,7 +30,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 __all__ = ["JumpCloudImporter"]
-__version__ = "0.1.3"
+__version__ = "0.2.3"
 
 
 # Progress Reporter for AWS Object Uploads
@@ -144,6 +144,12 @@ class JumpCloudImporter(Processor):
                 "by pkg recipe/processor, but if not, defaults to"
                 "'0.0.0.0'. ",
             "default": "0.0.0.0",
+        },
+        "JC_SOFTWARE": {
+            "required": True,
+            "description":
+                "Software or Commands",
+            "default": "Commands"
         },
         "JC_USER": {
             "required": False,
@@ -573,6 +579,33 @@ class JumpCloudImporter(Processor):
             self.env['NAME'] + "-" + self.env.get("version")
         self.output("Command Name set to: " + self.commandName)
 
+    def list_softwareApp(self, name):
+        """Check if command exists by comparing AutoPkg names
+
+        This function takes input from the JC_SYSGROUP parameter
+        and checks if a command exists with the same name on JumpCloud.
+
+        if the command does not exist, return true indicating that the
+        group should be build.
+
+        if the command exists return false, the command does not need
+        to be created
+        """
+        JC_CMD = jcapiv2.SoftwareAppsApi(jcapiv2.ApiClient(self.CONFIGURATIONv2))
+        try:
+            # Get a SoftwareApp
+            api_response = JC_CMD.software_apps_list(self.CONTENT_TYPE, self.ACCEPT)
+            # get search results
+            for i in api_response:
+                if name in i.display_name:
+                    print("SoftwareApp: " + name + " already exists")
+                    return False
+            # return true if an exact command name match does not exist.
+            print("SoftwareApp does not exist, creating software app: " + name)
+            return True
+        except ApiException as err:
+            print("Exception when calling DefaultApi->software_apps_list: %s\n" % err)
+
     def check_command(self, name):
         """Check if command exists by comparing AutoPkg names
 
@@ -628,6 +661,84 @@ class JumpCloudImporter(Processor):
 
         except ApiExceptionV1 as err:
             print("Exception when calling CommandsApi->commands_post: %s\n" % err)
+
+    def get_softwareApp(self, name):
+        """Check if command exists by comparing AutoPkg names
+
+        This function takes input from the JC_SYSGROUP parameter
+        and checks if a command exists with the same name on JumpCloud.
+
+        if the command does not exist, return true indicating that the
+        group should be build.
+
+        if the command exists return false, the command does not need
+        to be created
+        """
+        JC_CMD = jcapiv2.SoftwareAppsApi(jcapiv2.ApiClient(self.CONFIGURATIONv2))
+        count = 0
+        match = ""
+        try:
+            # Get a SoftwareApp
+            api_response = JC_CMD.software_apps_list(self.CONTENT_TYPE, self.ACCEPT)
+            # get search results
+            for i in api_response:
+                if i.settings[0].package_manager == "APPLE_CUSTOM":
+                    if name in i.display_name:
+                        match = i.id
+                        count += 1
+                    if count > 1:
+                        break
+            if count > 1:
+                print("Too many softwareApps with the same displayname")
+            else:
+                self.commandID = match
+                return match
+        except ApiException as err:
+            print("Exception when calling DefaultApi->software_apps_list: %s\n" % err)
+
+    def new_softwareApp(self, name, url):
+        """Check if command exists by comparing AutoPkg names
+
+        This function takes input from the JC_SYSGROUP parameter
+        and checks if a command exists with the same name on JumpCloud.
+
+        if the command does not exist, return true indicating that the
+        group should be build.
+
+        if the command exists return false, the command does not need
+        to be created
+        """
+        JC_CMD = jcapiv2.SoftwareAppsApi(jcapiv2.ApiClient(self.CONFIGURATIONv2))
+        try:
+            body = {
+                "url": url
+            }
+            api_response = JC_CMD.software_apps_validate_custom_app_url(self.CONTENT_TYPE, self.ACCEPT, body=body)
+            print(api_response)
+            if api_response:
+                settings = jcapiv2.SoftwareAppSettings(
+                    allow_update_delay=False,
+                    asset_kind=api_response.asset_kind,
+                    asset_sha256_size=api_response.asset_sha256_size,
+                    asset_sha256_strings=api_response.asset_sha256_strings,
+                    auto_update=False,
+                    description=api_response.title,
+                    desired_state="INSTALL",
+                    location=api_response.asset_url,
+                    package_id=api_response.bundle_identifier,
+                    package_kind=api_response.package_kind,
+                    package_manager="APPLE_CUSTOM",
+                    package_version=api_response.bundle_version,
+                )
+                body2 = jcapiv2.SoftwareApp(
+                    display_name=name,
+                    id="",
+                    settings=[settings],
+                )
+                next_response = JC_CMD.software_apps_post(self.CONTENT_TYPE, self.ACCEPT, body=body2)
+
+        except ApiException as err:
+                print("Exception when calling DefaultApi->software_apps_post: %s\n" % err)
 
     def set_command(self, commandName):
         """Create a JumpCloud command to be edited by the edit_command
@@ -1009,25 +1120,41 @@ exit 0
 
             self.output("============== BEGIN COMMAND CHECK ==============")
             if self.env["JC_DIST"] == "AWS":
-                # if command does not exist do the following
-                if self.check_command(self.commandName):
-                    # create command for the first time
-                    self.set_command(self.commandName)
-                    # return id of command
-                    self.get_command_id(self.commandName)
-                    # with returned value of command upload package
-                    ## testing function ##
-                    # self.debug_upload_file(self.env["pkg_path"], "jcautopkg")
-                    ## end testing function ##
-                    ## AWS functions to run with packages ##
-                    self.upload_file(
-                        self.env["pkg_path"], self.env["AWS_BUCKET"])
-                    self.edit_command(
-                        self.env["pkg_path"], self.commandUrl, self.commandId)
-                    ## END AWS functions ##
-                else:
-                    # command exists just return id
-                    self.get_command_id(self.commandName)
+                if self.env["JC_SOFTWARE"] == "Commands":
+                    # Path for Commands:
+                    # if command does not exist do the following
+                    if self.check_command(self.commandName):
+                        # create command for the first time
+                        self.set_command(self.commandName)
+                        # return id of command
+                        self.get_command_id(self.commandName)
+                        # with returned value of command upload package
+                        ## testing function ##
+                        # self.debug_upload_file(self.env["pkg_path"], "jcautopkg")
+                        ## end testing function ##
+                        ## AWS functions to run with packages ##
+                        self.upload_file(
+                            self.env["pkg_path"], self.env["AWS_BUCKET"])
+                        self.edit_command(
+                            self.env["pkg_path"], self.commandUrl, self.commandId)
+                        ## END AWS functions ##
+                    else:
+                        # command exists just return id
+                        self.get_command_id(self.commandName)
+                if self.env["JC_SOFTWARE"] == "Software":
+                    # Path for Software Apps:
+                    # if software app does not exist do the following
+                    if not self.get_softwareApp(self.commandName):
+                        # First Upload File
+                        ## AWS functions to run with packages ##
+                        self.upload_file(
+                            self.env["pkg_path"], self.env["AWS_BUCKET"])
+                        # self.edit_command(
+                        #     self.env["pkg_path"], self.commandUrl, self.commandId)
+                        ## END AWS functions ##
+                        # Then Post New Software App
+                        self.new_softwareApp(self.commandName, self.commandUrl)
+
             self.output("=============== END COMMAND CHECK ===============")
             self.output("=================================================")
 
