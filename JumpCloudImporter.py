@@ -28,7 +28,7 @@ from autopkglib import Processor, ProcessorError
 import logging
 import boto3
 from botocore.exceptions import ClientError
-from distutils.version import LooseVersion, StrictVersion
+from distutils.version import LooseVersion, LooseVersion
 
 
 __all__ = ["JumpCloudImporter"]
@@ -613,12 +613,18 @@ class JumpCloudImporter(Processor):
         '''
         Returns the highest version of a software app found
         '''
-        list2 = []
-        for i in list:
-            if name in i.settings[0].description:
-                list2.append(i)
-        list2.sort(reverse=True, key=self.sort_returnVersion)
-        return list2[0]
+        if not list:
+            return None
+        else:
+            list2 = []
+            for i in list:
+                if name in i.settings[0].description:
+                    list2.append(i)
+            if not list2:
+                return None
+            else:
+                list2.sort(reverse=True, key=self.sort_returnVersion)
+                return list2[0]
 
     def sort_returnVersion(self, e):
         return LooseVersion(e.settings[0].package_version)
@@ -1257,18 +1263,21 @@ exit 0
                     # print(var)
                     managedNameSearch = "%s" % "AutoPkg-" + self.env['NAME']
 
-
-                    foundSofwareApps = (self.sort_softwareApp(managedNameSearch, self.list_softwareApp()))
-                    if foundSofwareApps.settings[0].package_version == self.env.get("version"):
-                        print("Found matching software app: " + foundSofwareApps.display_name)
-                        print("Latest Version Found in JumpCloud: " + foundSofwareApps.settings[0].package_version + " matches this app version: " + self.env.get("version") + " no need to update or add")
-                        managedSoftwareApp = foundSofwareApps
-                        # return None
-                    elif LooseVersion(foundSofwareApps.settings[0].package_version) < LooseVersion(self.env.get("version")):
-                        print("Found matching software app: " + foundSofwareApps.display_name)
-                        print("Latest Version Found in JumpCloud: " + foundSofwareApps.settings[0].package_version + " is less than this app version: " + self.env.get("version") + " updating this software app")
-                        self.upload_file(self.env["pkg_path"], self.env["AWS_BUCKET"])
-                        managedSoftwareApp = self.set_softwareApp(name=self.commandName, id=foundSofwareApps[0]["id"], url=self.commandUrl)
+                    appList = self.list_softwareApp()
+                    if not appList:
+                        foundSofwareApps = (self.sort_softwareApp(managedNameSearch, self.list_softwareApp()))
+                        if foundSofwareApps is None:
+                            print("hello its empty")
+                        if foundSofwareApps.settings[0].package_version == self.env.get("version"):
+                            print("Found matching software app: " + foundSofwareApps.display_name)
+                            print("Latest Version Found in JumpCloud: " + foundSofwareApps.settings[0].package_version + " matches this app version: " + self.env.get("version") + " no need to update or add")
+                            managedSoftwareApp = foundSofwareApps
+                            # return None
+                        elif LooseVersion(foundSofwareApps.settings[0].package_version) < LooseVersion(self.env.get("version")):
+                            print("Found matching software app: " + foundSofwareApps.display_name)
+                            print("Latest Version Found in JumpCloud: " + foundSofwareApps.settings[0].package_version + " is less than this app version: " + self.env.get("version") + " updating this software app")
+                            self.upload_file(self.env["pkg_path"], self.env["AWS_BUCKET"])
+                            managedSoftwareApp = self.set_softwareApp(name=self.commandName, id=foundSofwareApps[0]["id"], url=self.commandUrl)
                     else:
                         print("No matching title found in JumpCloud, adding new software app")
                         # if software does not exist, create new entry
