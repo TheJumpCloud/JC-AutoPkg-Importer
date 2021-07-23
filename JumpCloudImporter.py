@@ -28,6 +28,8 @@ from autopkglib import Processor, ProcessorError
 import logging
 import boto3
 from botocore.exceptions import ClientError
+from distutils.version import LooseVersion, StrictVersion
+
 
 __all__ = ["JumpCloudImporter"]
 __version__ = "0.2.3"
@@ -527,7 +529,9 @@ class JumpCloudImporter(Processor):
             jcapiv2.ApiClient(self.CONFIGURATIONv2))
         composite = []
         group_id = group
-        body = jcapiv2.SystemGroupMembersReq(
+        # body = jcapiv2.SystemGroupMembersReq(
+        #     id=system, op="add", type="system")
+        body = jcapiv2.GraphOperationSystemGroupMember(
             id=system, op="add", type="system")
         try:
             systemGroupMember = JC_SYS_GROUP.graph_system_group_membership(
@@ -579,7 +583,7 @@ class JumpCloudImporter(Processor):
             self.env['NAME'] + "-" + self.env.get("version")
         self.output("Command Name set to: " + self.commandName)
 
-    def list_softwareApp(self, name):
+    def list_softwareApp(self):
         """Check if command exists by comparing AutoPkg names
 
         This function takes input from the JC_SYSGROUP parameter
@@ -596,15 +600,28 @@ class JumpCloudImporter(Processor):
             # Get a SoftwareApp
             api_response = JC_CMD.software_apps_list(self.CONTENT_TYPE, self.ACCEPT)
             # get search results
+            list = []
             for i in api_response:
-                if name in i.display_name:
-                    print("SoftwareApp: " + name + " already exists")
-                    return False
-            # return true if an exact command name match does not exist.
-            print("SoftwareApp does not exist, creating software app: " + name)
-            return True
+                if i.settings[0].package_manager == "APPLE_CUSTOM":
+                    # print(i.settings[0].description)
+                    list.append(i)
+            return list
         except ApiException as err:
             print("Exception when calling DefaultApi->software_apps_list: %s\n" % err)
+
+    def sort_softwareApp(self, name, list):
+        '''
+        Returns the highest version of a software app found
+        '''
+        list2 = []
+        for i in list:
+            if name in i.settings[0].description:
+                list2.append(i)
+        list2.sort(reverse=True, key=self.sort_returnVersion)
+        return list2[0]
+
+    def sort_returnVersion(self, e):
+        return LooseVersion(e.settings[0].package_version)
 
     def check_command(self, name):
         """Check if command exists by comparing AutoPkg names
@@ -722,7 +739,7 @@ class JumpCloudImporter(Processor):
                     asset_sha256_size=api_response.asset_sha256_size,
                     asset_sha256_strings=api_response.asset_sha256_strings,
                     auto_update=False,
-                    description=api_response.title,
+                    description=name,
                     desired_state="INSTALL",
                     location=api_response.asset_url,
                     package_id=api_response.bundle_identifier,
@@ -731,14 +748,106 @@ class JumpCloudImporter(Processor):
                     package_version=api_response.bundle_version,
                 )
                 body2 = jcapiv2.SoftwareApp(
-                    display_name=name,
+                    display_name=api_response.title,
                     id="",
                     settings=[settings],
                 )
                 next_response = JC_CMD.software_apps_post(self.CONTENT_TYPE, self.ACCEPT, body=body2)
+                return(next_response)
+        except ApiException as err:
+            print("Exception when calling DefaultApi->software_apps_post: %s\n" % err)
+
+    def set_softwareApp(self, name, id, url):
+        """Check if command exists by comparing AutoPkg names
+
+        This function takes input from the JC_SYSGROUP parameter
+        and checks if a command exists with the same name on JumpCloud.
+
+        if the command does not exist, return true indicating that the
+        group should be build.
+
+        if the command exists return false, the command does not need
+        to be created
+        """
+        JC_CMD = jcapiv2.SoftwareAppsApi(jcapiv2.ApiClient(self.CONFIGURATIONv2))
+        try:
+            # Get a SoftwareApp
+            body = {
+                "url": url
+            }
+            api_response = JC_CMD.software_apps_validate_custom_app_url(self.CONTENT_TYPE, self.ACCEPT, body=body)
+            # result = api_response.set(body)
+            print(api_response)
+            if api_response:
+                settings = jcapiv2.SoftwareAppSettings(
+                    allow_update_delay=False,
+                    asset_kind=api_response.asset_kind,
+                    asset_sha256_size=api_response.asset_sha256_size,
+                    asset_sha256_strings=api_response.asset_sha256_strings,
+                    auto_update=False,
+                    description=name,
+                    desired_state="INSTALL",
+                    location=api_response.asset_url,
+                    package_id=api_response.bundle_identifier,
+                    package_kind=api_response.package_kind,
+                    package_manager="APPLE_CUSTOM",
+                    package_version=api_response.bundle_version,
+                )
+                body2 = jcapiv2.SoftwareApp(
+                    display_name=api_response.title,
+                    id="",
+                    settings=[settings],
+                )
+                next_response = JC_CMD.software_apps_update(id, self.CONTENT_TYPE, self.ACCEPT, body=body2)
+                return(next_response)
 
         except ApiException as err:
-                print("Exception when calling DefaultApi->software_apps_post: %s\n" % err)
+            print("Exception when calling DefaultApi->software_apps_update: %s\n" % err)
+
+    def post_softwareAppSystemGroupAssociations(self, softwareAppId, targetID, op, type):
+        """Check if command exists by comparing AutoPkg names
+
+        softwareAppId: the ID of the software app
+        targetID: the ID of the system group or system
+        op: (Allowed Values): add, remove, update
+        type: (Allowed Values): system, system_group
+        """
+        JC_CMD = jcapiv2.SoftwareAppsApi(jcapiv2.ApiClient(self.CONFIGURATIONv2))
+        JC_CMD.graph_softwareapps_traverse_system_group
+        try:
+            # Get a SoftwareApp
+            body = jcapiv2.GraphOperationSoftwareApp(
+                id=targetID,
+                op=op,
+                type=type
+            )
+            api_response = JC_CMD.graph_softwareapps_associations_post(softwareAppId, self.CONTENT_TYPE, self.ACCEPT, body=body)
+            # get search results
+            return api_response
+        except ApiException as err:
+            print("Exception when calling SoftwareAppsApi->graph_softwareapps_associations_post: %s\n" % err)
+
+    def get_softwareAppSystemGroupAssociations(self, id):
+        """Check if command exists by comparing AutoPkg names
+
+        This function takes input from the JC_SYSGROUP parameter
+        and checks if a command exists with the same name on JumpCloud.
+
+        if the command does not exist, return true indicating that the
+        group should be build.
+
+        if the command exists return false, the command does not need
+        to be created
+        """
+        JC_CMD = jcapiv2.SoftwareAppsApi(jcapiv2.ApiClient(self.CONFIGURATIONv2))
+        JC_CMD.graph_softwareapps_traverse_system_group
+        try:
+            # Get a SoftwareApp
+            api_response = JC_CMD.graph_softwareapps_traverse_system_group(id, self.CONTENT_TYPE, self.ACCEPT)
+            # get search results
+            return api_response
+        except ApiException as err:
+            print("Exception when calling SoftwareAppsApi->graph_softwareapps_traverse_system_group: %s\n" % err)
 
     def set_command(self, commandName):
         """Create a JumpCloud command to be edited by the edit_command
@@ -1144,16 +1253,58 @@ exit 0
                 if self.env["JC_SOFTWARE"] == "Software":
                     # Path for Software Apps:
                     # if software app does not exist do the following
-                    if not self.get_softwareApp(self.commandName):
+                    # foundSofwareApps = self.list_softwareApp()
+                    # print(var)
+                    managedNameSearch = "%s" % "AutoPkg-" + self.env['NAME']
+
+
+                    foundSofwareApps = (self.sort_softwareApp(managedNameSearch, self.list_softwareApp()))
+                    if foundSofwareApps.settings[0].package_version == self.env.get("version"):
+                        print("Found matching software app: " + foundSofwareApps.display_name)
+                        print("Latest Version Found in JumpCloud: " + foundSofwareApps.settings[0].package_version + " matches this app version: " + self.env.get("version") + " no need to update or add")
+                        managedSoftwareApp = foundSofwareApps
+                        # return None
+                    elif LooseVersion(foundSofwareApps.settings[0].package_version) < LooseVersion(self.env.get("version")):
+                        print("Found matching software app: " + foundSofwareApps.display_name)
+                        print("Latest Version Found in JumpCloud: " + foundSofwareApps.settings[0].package_version + " is less than this app version: " + self.env.get("version") + " updating this software app")
+                        self.upload_file(self.env["pkg_path"], self.env["AWS_BUCKET"])
+                        managedSoftwareApp = self.set_softwareApp(name=self.commandName, id=foundSofwareApps[0]["id"], url=self.commandUrl)
+                    else:
+                        print("No matching title found in JumpCloud, adding new software app")
+                        # if software does not exist, create new entry
+                        self.upload_file(self.env["pkg_path"], self.env["AWS_BUCKET"])
+                        managedSoftwareApp = self.new_softwareApp(self.commandName, self.commandUrl)
+
+                    # foundId = None
+                    # for i in foundSofwareApps:
+                    #     if (managedNameSearch in i.settings[0].description):
+                    #         # if software app note and break loop
+                    #         print("Found Managed AutoPkg Software: " + i.display_name + " with ID: " + i.id)
+                    #         if LooseVersion(i.settings[0].package_version) < LooseVersion(self.env.get("version")):
+                    #             print("Version in JumpCloud is less than this AutoPkg version, updating...")
+                    #             foundId = i.id
+                    #             break
+                    #         elif LooseVersion(i.settings[0].package_version) == LooseVersion(self.env.get("version")):
+                    #             print("Versions of software found in JumpCloud Match")
+
+                    # if foundId is not None:
+                    #     # if foundID exists update app's url
+                    #     print("updating " + foundId)
+
+                    #     self.upload_file(self.env["pkg_path"], self.env["AWS_BUCKET"])
+                    #     managedSoftwareApp = self.set_softwareApp(name=self.commandName, id=foundId, url=self.commandUrl)
+                    # else:
+                    #     print("creating new software app")
+                    #     # if software does not exist, create new entry
+                    #     self.upload_file(self.env["pkg_path"], self.env["AWS_BUCKET"])
+                    #     managedSoftwareApp = self.new_softwareApp(self.commandName, self.commandUrl)
+                    # if not self.get_softwareApp(self.commandName):
                         # First Upload File
                         ## AWS functions to run with packages ##
-                        self.upload_file(
-                            self.env["pkg_path"], self.env["AWS_BUCKET"])
                         # self.edit_command(
                         #     self.env["pkg_path"], self.commandUrl, self.commandId)
                         ## END AWS functions ##
                         # Then Post New Software App
-                        self.new_softwareApp(self.commandName, self.commandUrl)
 
             self.output("=============== END COMMAND CHECK ===============")
             self.output("=================================================")
@@ -1161,11 +1312,24 @@ exit 0
             if self.env["JC_TYPE"] != "manual":
                 self.output("========== BEGIN COMMAND ASSOCIATIONS ===========")
                 # Associate command with system group
-                if not self.associate_command_with_group_list(self.get_command_id(self.commandName), self.systemGroupID):
-                    self.associate_command_with_group_post(
-                        self.get_command_id(self.commandName), self.systemGroupID)
-                else:
-                    self.output("Command Already associated with the group")
+                if self.env["JC_SOFTWARE"] == "Commands":
+                    if not self.associate_command_with_group_list(self.get_command_id(self.commandName), self.systemGroupID):
+                        self.associate_command_with_group_post(
+                            self.get_command_id(self.commandName), self.systemGroupID)
+                    else:
+                        self.output("Command already associated with the group")
+                if self.env["JC_SOFTWARE"] == "Software":
+                    print("work in progress....")
+                    swAssociations = self.get_softwareAppSystemGroupAssociations(managedSoftwareApp.id)
+                    swAssociationIds = []
+                    for assoc in swAssociations:
+                        swAssociationIds.append(assoc.id)
+                    if self.systemGroupID not in swAssociationIds:
+                        # add to group
+                        self.post_softwareAppSystemGroupAssociations(softwareAppId=managedSoftwareApp.id, targetID=self.systemGroupID, op="add", type="system_group")
+                    else:
+                        self.output("Software App already associated with the group")
+                    # if systemGroup is not associated with the
 
                 self.output("=========== END COMMAND ASSOCIATIONS ============")
                 self.output("=================================================")
