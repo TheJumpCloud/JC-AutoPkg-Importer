@@ -930,8 +930,12 @@ exit 0
                 file_name, bucket, object_name, Callback=ProgressPercentage(file_name))
             location = boto3.client('s3').get_bucket_location(
                 Bucket=bucket)['LocationConstraint']
-            url = "https://s3-%s.amazonaws.com/%s/%s" % (
-                location, bucket, quote(object_name))
+            if location is None:
+	        location_url = "" 
+            else:
+	        location_url = "-%s" % (location)
+            url = "https://s3%s.amazonaws.com/%s/%s" % (
+                location_url, bucket, quote(object_name))
             self.commandUrl = url
             print("\nUploaded File at URL: " + url)
         except ClientError as e:
