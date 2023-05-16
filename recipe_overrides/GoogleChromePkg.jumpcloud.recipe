@@ -24,10 +24,10 @@
                 <string>AWS</string>
 				<key>AWS_BUCKET</key>
 				<string>jcautopkg</string>
-                <key>JC_SYSGROUP</key>
-                <string>AutoPkg-%NAME%-%version%</string>
-                <key>JC_SI_APP_NAME</key>
-                <string>Google Chrome</string>
+				<key>JC_SYSGROUP</key>
+				<string>AutoPkg-%NAME%-%version%</string>
+				<key>JC_SI_APP_NAME</key>
+				<string>Google Chrome</string>
 				<key>JC_TYPE</key>
 				<string>update</string>
 				<key>JC_TRIGGER</key>
