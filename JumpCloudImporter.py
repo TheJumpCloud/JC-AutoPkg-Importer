@@ -528,7 +528,7 @@ class JumpCloudImporter(Processor):
                     if (item.system_id in systemGroupMembers):
                         self.remove_system_from_group(item.system_id, systemGroup_ID)
                     if (item.system_id not in systemGroupPostMembers):
-                        self.add_system_to_group(item.system_id, self.systemGroupPost_ID)
+                        self.add_system_to_group(item.system_id, systemGroupPost_ID)
                 # remove the systemID from All systems
                 allSystems.remove(item.system_id)
 
@@ -943,8 +943,12 @@ exit 0
                 file_name, bucket, object_name, Callback=ProgressPercentage(file_name))
             location = boto3.client('s3').get_bucket_location(
                 Bucket=bucket)['LocationConstraint']
-            url = "https://s3-%s.amazonaws.com/%s/%s" % (
-                location, bucket, quote(object_name))
+            if location is None:
+                location_url = ""
+            else:
+                location_url = "-%s" % (location)
+            url = "https://s3%s.amazonaws.com/%s/%s" % (
+                location_url, bucket, quote(object_name))
             self.commandUrl = url
             print("\nUploaded File at URL: " + url)
         except ClientError as e:
