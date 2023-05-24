@@ -441,6 +441,7 @@ class JumpCloudImporter(Processor):
                 systems = SI_SYSTEMS.systeminsights_list_system_info(
                     self.CONTENT_TYPE,
                     self.ACCEPT,
+                    x_org_id=self.ORG_ID,
                     limit=limit,
                     skip=skip,
                     filter=search)
