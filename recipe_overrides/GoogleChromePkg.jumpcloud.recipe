@@ -6,11 +6,11 @@
 	<string>local.pkg.GoogleChromePkg</string>
 	<key>Input</key>
 	<dict>
-		<key>DOWNLOAD_URL</key>
-		<string>https://dl.google.com/chrome/mac/stable/gcem/GoogleChrome.pkg</string>
-		<key>NAME</key>
-		<string>GoogleChrome</string>
-	</dict>
+        <key>NAME</key>
+        <string>GoogleChrome</string>
+        <key>DOWNLOAD_URL</key>
+        <string>https://dl.google.com/chrome/mac/stable/accept_tos%3Dhttps%253A%252F%252Fwww.google.com%252Fintl%252Fen_ph%252Fchrome%252Fterms%252F%26_and_accept_tos%3Dhttps%253A%252F%252Fpolicies.google.com%252Fterms/googlechrome.pkg</string>
+    </dict>
 	<key>ParentRecipe</key>
 	<string>com.github.autopkg.pkg.googlechromepkg</string>
 	<key>Process</key>
@@ -24,10 +24,12 @@
                 <string>AWS</string>
 				<key>AWS_BUCKET</key>
 				<string>jcautopkg</string>
-                <key>JC_SYSGROUP</key>
-                <string>AutoPkg-%NAME%-%version%</string>
+				<key>JC_SYSGROUP</key>
+				<string>AutoPkg-%NAME%-%version%</string>
+				<key>JC_SI_APP_NAME</key>
+				<string>Google Chrome</string>
 				<key>JC_TYPE</key>
-				<string>auto</string>
+				<string>update</string>
 				<key>JC_TRIGGER</key>
 				<true/>
 				<key>JC_REPEAT_TYPE</key>

@@ -30,7 +30,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 __all__ = ["JumpCloudImporter"]
-__version__ = "0.1.3"
+__version__ = "0.2.0"
 
 
 # Progress Reporter for AWS Object Uploads
@@ -128,6 +128,14 @@ class JumpCloudImporter(Processor):
                 "If provided in recipe, the processor will build a smart"
                 "group and assign systems without that application and version"
                 "to the new group",
+            "default": "default"
+        },
+        "JC_SI_APP_NAME": {
+            "required": False,
+            "description":
+                "If provided in recipe, the system insights applications will"
+                "be searched by this value."
+                "ex. Google Chrome will return results for 'Google Chrome.app'",
             "default": "default"
         },
         "pkg_path": {
@@ -389,6 +397,29 @@ class JumpCloudImporter(Processor):
             if opp == "add":
                 self.commandChanges["Added"].append(command)
 
+    def get_system_group_members(self, group_id):
+        """This function returns members of a group specified by id
+        """
+        JC_SYS_GROUP = jcapiv2.SystemGroupMembersMembershipApi(
+            jcapiv2.ApiClient(self.CONFIGURATIONv2))
+        skip = 0
+        limit = 100
+        members = []
+        systemGroupMember = True
+
+        try:
+            while systemGroupMember:
+                systemGroupMember = JC_SYS_GROUP.graph_system_group_membership(
+                    group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, skip=skip, limit=limit)
+                members.extend(systemGroupMember)
+                skip += limit
+        except ApiException as err:
+            print(
+                "Exception when calling SystemGroupMembersApi->graph_system_group_members_list:" % err)
+        # only return ids
+        ids = [o.id for o in members]
+        return ids
+
     def get_system_insights_systems(self):
         """This function compares the systems inventory with the v1 api, saves those
         systems to a list called inventory.
@@ -397,47 +428,33 @@ class JumpCloudImporter(Processor):
         inventory system is an Apple device and in the computer inventory it's returned
         """
         # system inventory
-        # inventory = []
         SI_SYSTEMS = jcapiv2.SystemInsightsApi(
             jcapiv2.ApiClient(self.CONFIGURATIONv2))
+        skip = 0
+        limit = 100
+        allSystemInsightsSystems = []
+        systems = True
+        search = ['hardware_vendor:eq:Apple Inc.']
 
         try:
-            allSystems = []
-            condition = True
-            searchInt = 0
-
-            while condition:
+            while systems:
                 systems = SI_SYSTEMS.systeminsights_list_system_info(
-                    self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, limit=100, skip=searchInt)
-                for i in systems:
-                    if i._hardware_vendor.strip() == 'Apple Inc.':
-                        # create list of systems which have system insights data
-                        allSystems.append(i.system_id)
-                    searchInt += 100
-                    if len(systems) != 100:
-                        condition = False
+                    self.CONTENT_TYPE,
+                    self.ACCEPT,
+                    x_org_id=self.ORG_ID,
+                    limit=limit,
+                    skip=skip,
+                    filter=search)
+                allSystemInsightsSystems.extend(systems)
+                skip += limit
         except ApiException as err:
             print(
                 "Exception when calling SystemInsightsApi->systeminsights_list_system_info %s\n" % err)
 
-        # Remove systems already in the post install system group
-        # TODO: turn into own function to check for membership.
-        JC_SYS_GROUP = jcapiv2.SystemGroupMembersMembershipApi(
-            jcapiv2.ApiClient(self.CONFIGURATIONv2))
-        try:
-            systemGroupMember = JC_SYS_GROUP.graph_system_group_membership(
-                self.systemGroupPostID, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID)
-            for i in systemGroupMember:
-                # self.output(i.id)
-                while i.id in allSystems:
-                    allSystems.remove(i.id)
-                self.remove_system_from_group(i.id, self.systemGroupID)
-        except ApiException as err:
-            print(
-                "Exception when calling SystemGroupMembersApi->graph_system_group_members_post:" % err)
-        return allSystems
+        systemIDs = [o.system_id for o in allSystemInsightsSystems]
+        return systemIDs
 
-    def get_system_insights_apps_id(self, sysID, app):
+    def get_system_insights_apps_by_name(self, app):
         """This function gathers information about each system insights
         system, using AutoPkg as an input source this function queries
         systems based on the app recipe name.
@@ -451,47 +468,24 @@ class JumpCloudImporter(Processor):
             jcapiv2.ApiClient(self.CONFIGURATIONv2))
         try:
             # skip int used to iterate through sys insights apps
-            searchInt = 0
+            skip = 0
+            limit = 100
             # array to hold the results of what I actually want
-            appArry = []
+            appArray = []
             # continue to search while the app list does not return zero
-            condition = True
-            # short dynamic var for function below
-            name = sysID[:6]
-            # Search by system
-            search = ['system_id:eq:%s' % sysID]
+            apps = True
+            # Search by system app
+            search = ['name:eq:%s' % app + '.app']
 
-            while condition:
+            while apps:
                 apps = SI_APPS.systeminsights_list_apps(
-                    self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, skip=searchInt, limit=100, filter=search)
-                for i in apps:
-                    if "/Applications/" + app in i.path:
-                        appArry.append(i.bundle_name)
-                        # print(i.bundle_name + " " + i.bundle_short_version)
-                        if app == i.bundle_name:
-                            name = {
-                                "system": sysID,
-                                "application": i.bundle_name,
-                                "app_version": i.bundle_short_version
-                            }
-                            # add the system to the missing update array
-                            self.missingUpdate.append(name)
-                # search next 100 apps/ max limit of the JumpCloud API
-                searchInt += 100
-                if len(apps) == 0:
-                    condition = False
-            if app in appArry:
-                self.output(app + " found on system: " + sysID)
-            else:
-                self.output(app + " not found on system: " + sysID)
-                # print(self.env.get("JC_SYSGROUP"))
-                if self.env["JC_TYPE"] == "auto":
-                    self.add_system_to_group(sysID, self.systemGroupID)
-                elif self.env["JC_TYPE"] == "update":
-                    self.remove_system_from_group(sysID, self.systemGroupID)
+                    self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, skip=skip, limit=limit, filter=search)
+                appArray.extend(apps)
+                skip += limit
         except ApiException as err:
             print(
                 "Exception when calling SystemInsightsApi->systeminsights_list_apps: %s\n" % err)
+        return appArray
 
     def query_app_versions(self):
         """This function compares system app versions against the AutoPkg
@@ -515,26 +509,54 @@ class JumpCloudImporter(Processor):
                 self.remove_system_from_group(i["system"], self.systemGroupID)
                 self.add_system_to_group(i["system"], self.systemGroupPostID)
 
+    def compare_systems(self, allSystems, subset):
+        # Remove systems already in the post install system group
+        # add the system to the missing update array
+        systemGroup_ID = self.systemGroupID
+        systemGroupPost_ID = self.systemGroupPostID
+        systemGroupMembers = self.get_system_group_members(systemGroup_ID)
+        systemGroupPostMembers = self.get_system_group_members(systemGroupPost_ID)
+
+        # Subset will include systems that have the application installed
+        for item in subset:
+            if item.system_id in allSystems:
+                # if the system has the app but not the correct version, add it to the system group
+                if (item.bundle_short_version != self.env.get("version") or self.env.get("version") == "0.0.0.0"):
+                    if (item.system_id not in systemGroupMembers):
+                        self.add_system_to_group(item.system_id, systemGroup_ID)
+                # if the system has the app and the correct version, remove it from the system group and add it to the post install group
+                if (item.bundle_short_version == self.env.get("version")):
+                    if (item.system_id in systemGroupMembers):
+                        self.remove_system_from_group(item.system_id, systemGroup_ID)
+                    if (item.system_id not in systemGroupPostMembers):
+                        self.add_system_to_group(item.system_id, systemGroupPost_ID)
+                # remove the systemID from All systems
+                allSystems.remove(item.system_id)
+
+        # for all other systems remaining
+        for i in allSystems:
+            # if the recipe type is auto, add systems that don't have the app to the system group
+            if self.env["JC_TYPE"] == "auto":
+                if (i not in systemGroupMembers and i not in systemGroupPostMembers):
+                    self.add_system_to_group(i, systemGroup_ID)
+            # if the recipe type is update, we only update systems with the app already installed
+            # remove any found systems w/o the app installed from the system group
+            if self.env["JC_TYPE"] == "update":
+                if i in systemGroupMembers:
+                    self.remove_system_from_group(i, systemGroup_ID)
+
     def add_system_to_group(self, system, group):
         """Adds system to a group"""
         JC_SYS_GROUP = jcapiv2.SystemGroupMembersMembershipApi(
             jcapiv2.ApiClient(self.CONFIGURATIONv2))
-        composite = []
         group_id = group
         body = jcapiv2.SystemGroupMembersReq(
             id=system, op="add", type="system")
         try:
-            systemGroupMember = JC_SYS_GROUP.graph_system_group_membership(
-                group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID)
-            for i in systemGroupMember:
-                composite.append(i.id)
-            if system not in composite:
-                self.output("Adding: " + system + " to: " + group)
-                self.system_tracker(system, group, "add")
-                JC_SYS_GROUP.graph_system_group_members_post(
-                    group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
-            else:
-                self.output("System: " + system + " already in group " + group)
+            self.output("Adding: " + system + " to: " + group)
+            self.system_tracker(system, group, "add")
+            JC_SYS_GROUP.graph_system_group_members_post(
+                group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
         except ApiException as err:
             print(
                 "Exception when calling SystemGroupMembersApi->graph_system_group_members_post:" % err)
@@ -543,22 +565,14 @@ class JumpCloudImporter(Processor):
         """Remove system from a group"""
         JC_SYS_GROUP = jcapiv2.SystemGroupMembersMembershipApi(
             jcapiv2.ApiClient(self.CONFIGURATIONv2))
-        composite = []
         group_id = group
         body = jcapiv2.SystemGroupMembersReq(
             id=system, op="remove", type="system")
         try:
-            systemGroupMember = JC_SYS_GROUP.graph_system_group_membership(
-                group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID)
-            for i in systemGroupMember:
-                composite.append(i.id)
-            if system in composite:
-                self.output("Removing: " + system + " from: " + group)
-                self.system_tracker(system, group, "remove")
-                JC_SYS_GROUP.graph_system_group_members_post(
-                    group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
-            else:
-                self.output("System: " + system + " not in group " + group)
+            self.output("Removing: " + system + " from: " + group)
+            self.system_tracker(system, group, "remove")
+            JC_SYS_GROUP.graph_system_group_members_post(
+                group_id, self.CONTENT_TYPE, self.ACCEPT, x_org_id=self.ORG_ID, body=body)
         except ApiException as err:
             print(
                 "Exception when calling SystemGroupMembersApi->graph_system_group_members_post:" % err)
@@ -930,8 +944,12 @@ exit 0
                 file_name, bucket, object_name, Callback=ProgressPercentage(file_name))
             location = boto3.client('s3').get_bucket_location(
                 Bucket=bucket)['LocationConstraint']
-            url = "https://s3-%s.amazonaws.com/%s/%s" % (
-                location, bucket, quote(object_name))
+            if location is None:
+                location_url = ""
+            else:
+                location_url = "-%s" % (location)
+            url = "https://s3%s.amazonaws.com/%s/%s" % (
+                location_url, bucket, quote(object_name))
             self.commandUrl = url
             print("\nUploaded File at URL: " + url)
         except ClientError as e:
@@ -992,16 +1010,14 @@ exit 0
             if self.env["JC_TYPE"] == "auto" or self.env["JC_TYPE"] == "update":
                 # QUERY SYSTEMS
                 self.output("============== BEGIN SYSTEM QUERY ===============")
-                for i in self.get_system_insights_systems():
-                    self.get_system_insights_apps_id(i, self.env['NAME'])
+                if self.env["JC_SI_APP_NAME"] is not None:
+                    self.output("System Insights App Name: " + self.env["JC_SI_APP_NAME"])
+                    allSystems = self.get_system_insights_systems()
+                    foundApps = self.get_system_insights_apps_by_name(self.env['JC_SI_APP_NAME'])
+                    self.compare_systems(allSystems, foundApps)
+                else:
+                    self.output("System Insights App Name is not specified, skipping system query")
                 self.output("=============== END SYSTEM QUERY ================")
-                self.output("=================================================")
-
-                # QUERY APPS ON SYSTEMS
-                self.output("============== BEGIN VERSION QUERY ==============")
-                self.query_app_versions()
-                self.missingUpdate.clear()
-                self.output("=============== END VERSION QUERY ===============")
                 self.output("=================================================")
 
             # Set naming conventions for command and package name
